@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from .config import GuardianConfig
 from .models import (
@@ -36,6 +36,11 @@ class GuardianEngine:
     def __init__(self, config: Optional[GuardianConfig] = None) -> None:
         self.config = config or GuardianConfig()
 
+        # Keep a tiny bit of state so wallets / tests can introspect
+        # the last evaluation without re-running it.
+        self._last_matches: List[RuleMatch] = []
+        self._last_decision: Optional[GuardianDecision] = None
+
     # ------------------------------------------------------------------ #
     # Public API
     # ------------------------------------------------------------------ #
@@ -65,15 +70,36 @@ class GuardianEngine:
 
         score = sum(r.weight for r in rule_matches)
         level = self._map_score_to_level(score)
-
         actions = self._suggest_actions(level)
 
-        return GuardianDecision(
+        decision = GuardianDecision(
             level=level,
             score=score,
             actions=actions,
             reasons=[f"{r.rule_id}: {r.description}" for r in rule_matches],
         )
+
+        # store for later inspection
+        self._last_matches = list(rule_matches)
+        self._last_decision = decision
+
+        return decision
+
+    def get_last_matches(self) -> Sequence[RuleMatch]:
+        """
+        Return a read-only view of the last rule matches.
+
+        Useful for debugging, logging or tests without changing
+        the public evaluate_transaction API.
+        """
+        return tuple(self._last_matches)
+
+    def get_last_decision(self) -> Optional[GuardianDecision]:
+        """
+        Return the last GuardianDecision produced by evaluate_transaction,
+        or None if the engine has not evaluated anything yet.
+        """
+        return self._last_decision
 
     # ------------------------------------------------------------------ #
     # Rule groups
@@ -181,8 +207,8 @@ class GuardianEngine:
                             f"Fee {tx_ctx.fee} is much higher than typical "
                             f"{wallet_ctx.typical_fee}"
                         ),
-                        weight=1.0,
-                    )
+                    weight=1.0,
+                )
                 )
 
     def _apply_external_signals(
