@@ -1,141 +1,117 @@
-# DGB-Wallet-Guardian – Layer-4 DigiByte Wallet Protection
+# DGB Wallet Guardian v2
 
-**DGB-Wallet-Guardian** is the new **Layer-4 protection module** designed to sit on top of:
+DGB Wallet Guardian v2 is the wallet-side security layer in the **5‑Layer DigiByte Quantum Shield**.
+It evaluates outgoing transactions and decides whether to **ALLOW, WARN, DELAY, BLOCK, or require extra authentication**.
 
-> **DQSN → Sentinel AI v2 → ADN → (NEW) Wallet Guardian**
-
-Its purpose is simple:
-
-### **Protect DigiByte users directly at the wallet level.**  
-A final shield that watches for theft, quantum threats, phishing attempts, behavioural anomalies, and transaction manipulation.
-
----
-
-## 🚀 Why Layer-4?
-
-The DigiByte security stack is expanding:
-
-1. **DQSN** – entropy, nonce, difficulty & chain-level anomaly sensing  
-2. **Sentinel AI v2** – multi-signal threat detection, quantum anomaly prediction  
-3. **ADN v1/v2** – automated network-level defense actions  
-4. **Wallet Guardian (this repo)** – **user-level protection**
-
-This turns DigiByte into the first blockchain ecosystem with a **4-layer self-healing security architecture**.
+This system is designed to protect DigiByte users from:
+- wallet draining attacks  
+- phishing / new address risk  
+- unusual behaviour patterns  
+- high-risk network signals (Sentinel AI v2 / DQSN / ADN v2)  
+- device anomalies  
 
 ---
 
-## 🔐 What Wallet Guardian Will Protect
+# 🔐 Place in the 5‑Layer DigiByte Quantum Shield
 
-### **1. Outgoing Transaction Protection**
-- abnormal sending patterns  
-- unusual amounts compared to wallet history  
-- sudden full balance wipes  
-- suspicious fee manipulation  
-- AI-flagged “panic send” behaviour  
-- destination wallet risk scoring (optional)
+1. **Sentinel AI v2** – monitors blockchain entropy, mempool, attack patterns  
+2. **DQSN** – DigiByte Quantum Shield Network (global risk propagation)  
+3. **ADN v2** – Autonomous Defense Node (node‑side defense automation)  
+4. **🛡️ DGB Wallet Guardian v2** – *this repo*  
+5. **DGB Quantum Wallet Guard** – merges wallet + device + network signals  
 
-### **2. Quantum Threat Alerts**
-- signing attempts from weak / legacy keys  
-- preimage vulnerability warnings  
-- Shor/Grover risk scoring from Sentinel AI v2  
-- forced PQC mode activation via ADN
-
-### **3. Device Behaviour Monitoring**
-- mismatched device fingerprints  
-- changes in OS, browser, session entropy  
-- sudden automation-like behaviour  
-- clipboard hijacking detection  
-- malware-style transaction substitution patterns
-
-### **4. Social Engineering / Phishing Detection**
-- AI-driven message & link scoring  
-- QR code anomaly detection  
-- malformed address alerts  
-- “look-alike address” similarity checks
-
-### **5. Emergency Wallet Lockdown**
-If high risk is detected:
-- temporary signing freeze  
-- 2FA / multi-step confirmation  
-- delayed-sending mode  
-- ADN “hardened wallet mode” activation  
+Wallet Guardian v2 is the layer that **stops a bad transaction before it is signed**.
 
 ---
 
-## 🧠 How It Works With Sentinel AI v2
+# ✨ Features
 
-Wallet Guardian continuously streams minimal telemetry to Sentinel:
-
-- signing entropy  
-- behaviour patterns  
-- device fingerprints  
-- transaction intent  
-- timestamp anomalies  
-
-Sentinel AI v2 returns:  
-**NORMAL → ELEVATED → HIGH → CRITICAL**
-
-Wallet Guardian reacts instantly:
-
-| Sentinel Status | Wallet Guardian Action |
-|-----------------|------------------------|
-| NORMAL | smooth operation |
-| ELEVATED | extra warnings |
-| HIGH | multi-step confirmation |
-| CRITICAL | *lock wallet + block signing + notify ADN* |
+- Rule‑based risk engine  
+- Full transaction evaluation  
+- Score → RiskLevel mapping  
+- Clearly explained reasons for each rule match  
+- Device / Sentinel / ADN integration  
+- Lightweight, auditable Python implementation  
+- GitHub Actions CI tests on every commit  
 
 ---
 
-## 📁 Repository Layout (initial)
+# 📦 Directory Structure
 
 ```
-DGB-wallet-Guardian/
-├─ README.md
-├─ LICENSE
-└─ src/
-   └─ dgb_wallet_guardian/
-      ├─ __init__.py
-      ├─ rules/
-      ├─ behavioural_model/
-      ├─ transaction_filters/
-      ├─ device_fingerprint/
-      ├─ guardian_engine.py
-      └─ api.py
+src/dgb_wallet_guardian/
+│
+├── models.py           # WalletState, DeviceState, TxContext, etc.
+├── decisions.py        # GuardianDecision + GuardianResult enums
+├── policies.py         # Policy rules + evaluation helpers
+├── guardian_engine.py  # Core engine (rule evaluator)
+├── config.py           # Thresholds & tuning parameters
+└── client.py           # Optional: helper client for external apps
 ```
 
 ---
 
-## 🛠️ Early Development Goal
+# 🚀 Quick Usage Example
 
-The first milestone:
+```python
+from dgb_wallet_guardian.models import WalletState, TxContext
+from dgb_wallet_guardian.guardian_engine import GuardianEngine
+from dgb_wallet_guardian.decisions import GuardianDecision
 
-### **Guardian Engine v0.1**
-- simple rules (balance wipe detection, address mismatch alerts)
-- device fingerprint baseline
-- behaviour scoring stub
-- API endpoints for testing with Sentinel v2 + ADN
+from datetime import datetime
+
+engine = GuardianEngine()
+
+wallet = WalletState(
+    balance=5000.0,
+    daily_sent_amount=120.0
+)
+
+tx = TxContext(
+    amount=2000.0,
+    destination_address="dgb1qnewaddress123",
+    created_at=datetime.utcnow()
+)
+
+decision = engine.evaluate(wallet, tx)
+
+print("Decision:", decision.decision)
+print("Reason:", decision.reason)
+print("Cooldown:", decision.cooldown_seconds)
+```
 
 ---
 
-## 📜 License (MIT)
+# ⚙️ Configuration
+
+Adjust thresholds inside **config.py**:
+
+- `FULL_BALANCE_RATIO`
+- `LARGE_TX_MULTIPLIER`
+- `DAILY_LIMIT_MULTIPLIER`
+- `COOLDOWN_SECONDS`
+- `REQUIRE_2FA_THRESHOLD`
+
+Wallet apps may override this at runtime.
+
+---
+
+# 🧪 Tests
+
+Tests run automatically on GitHub Actions after every commit.
+
+Run locally:
 
 ```
-MIT License
-
-Copyright (c) 2025 
-Darek (@Darek_DGB)
+pytest
 ```
 
 ---
 
-## 🌟 Vision
+# 📄 License
+MIT License — fully open source, free to use.
 
-DigiByte becomes the first chain where:
+---
 
-**The chain protects you.  
-The AI protects you.  
-The defense node protects you.  
-And now — your wallet protects you.**
-
-The 4-layer shield is how we take DigiByte safely into the quantum era.
-
+# 👑 Created by DarekDGB
+Open‑source, free, for DigiByte and future generations.
