@@ -10,6 +10,7 @@ from .models import (
     TransactionContext,
     GuardianDecision,
 )
+from .adaptive_bridge import emit_adaptive_event  # <— NEW
 
 
 @dataclass
@@ -29,8 +30,8 @@ class GuardianEngine:
     - no external dependencies
     - safe to run in test environments
 
-    Future versions can extend this with ML models and Sentinel AI v2
-    integration without breaking the public API.
+    Future versions can extend this with ML models, Sentinel AI v2
+    and Adaptive Core integration without breaking the public API.
     """
 
     def __init__(self, config: Optional[GuardianConfig] = None) -> None:
@@ -58,7 +59,8 @@ class GuardianEngine:
         - device_fingerprint
         - sentinel_status (NORMAL/ELEVATED/HIGH/CRITICAL)
         - geo_ip / session info
-        - any other wallet-side signals
+        - adaptive_sink (optional) – sink for Adaptive Core
+        - wallet_fingerprint / user_id (optional) – identity context
         """
         extra_signals = extra_signals or {}
 
@@ -82,6 +84,41 @@ class GuardianEngine:
         # store for later inspection
         self._last_matches = list(rule_matches)
         self._last_decision = decision
+
+        # ------------------------------------------------------------------ #
+        # Adaptive Core hook
+        # ------------------------------------------------------------------ #
+        adaptive_sink = extra_signals.get("adaptive_sink")
+        if adaptive_sink is not None and level is not RiskLevel.NORMAL:
+            # Crude severity mapping: normalised from score & level
+            if level is RiskLevel.ELEVATED:
+                severity = 0.45
+            elif level is RiskLevel.HIGH:
+                severity = 0.7
+            else:  # CRITICAL
+                severity = 0.9
+
+            wallet_fingerprint = extra_signals.get(
+                "wallet_fingerprint", getattr(wallet_ctx, "wallet_id", "unknown_wallet")
+            )
+            user_id = extra_signals.get("user_id")
+
+            emit_adaptive_event(
+                adaptive_sink=adaptive_sink,
+                event_id=getattr(tx_ctx, "tx_id", "unknown_tx"),
+                layer="guardian_wallet",
+                anomaly_type="wallet_risk_decision",
+                severity=severity,
+                fingerprint=wallet_fingerprint,
+                user_id=user_id,
+                metadata={
+                    "risk_level": getattr(level, "name", str(level)),
+                    "score": score,
+                    "actions": actions,
+                    "amount": tx_ctx.amount,
+                    "destination": tx_ctx.to_address,
+                },
+            )
 
         return decision
 
@@ -207,8 +244,8 @@ class GuardianEngine:
                             f"Fee {tx_ctx.fee} is much higher than typical "
                             f"{wallet_ctx.typical_fee}"
                         ),
-                    weight=1.0,
-                )
+                        weight=1.0,
+                    )
                 )
 
     def _apply_external_signals(
