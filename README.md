@@ -1,6 +1,6 @@
 # 🛡️ DGB Wallet Guardian
 
-[![CI](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/test.yml/badge.svg)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions)
+[![Wallet Guardian Tests (v3)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/test.yml/badge.svg)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Shield Contract](https://img.shields.io/badge/Shield%20Contract-v3-critical)](#shield-contract-v3)
