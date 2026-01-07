@@ -1,10 +1,10 @@
 # 🛡️ DGB Wallet Guardian
 
-[![Wallet Guardian Tests (v3)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/test.yml/badge.svg)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/test.yml)
-[![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue)](#)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Shield Contract](https://img.shields.io/badge/Shield%20Contract-v3-critical)](#shield-contract-v3)
-[![Security](https://img.shields.io/badge/security-fail--closed-red)](SECURITY.md)
+[![Guardian Tests](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Shield Contract](https://img.shields.io/badge/Shield%20Contract-v3-red)
+![Security](https://img.shields.io/badge/security-fail--closed-critical)
 
 ---
 
@@ -12,99 +12,96 @@
 
 **DGB Wallet Guardian** is the **user-side protection layer** of the DigiByte Quantum Shield.
 
-It enforces **policy-driven, deterministic, fail-closed security controls**
-at the wallet boundary — **before irreversible actions occur**.
+It enforces **Shield Contract v3** rules at the wallet boundary, ensuring that **no transaction, signing request, or sensitive wallet action** can bypass security checks — even if the wallet UI, plugins, or integrations are compromised.
 
-Guardian Wallet is **not a UI feature** and **not a heuristic monitor**.
-It is a **contract-enforced security engine**.
-
----
-
-## Shield Contract v3 (Authoritative)
-
-Wallet Guardian **v3** is the only supported and authoritative version.
-
-Guarantees:
-- Deterministic decisions
-- Explicit reason codes
-- Fail-closed by default
-- Glass-box contract surface
-- CI-enforced invariants
-
-📌 v3 documentation → `docs/v3/`  
-📦 Legacy v2 docs → `docs/v2/` (archived, non-authoritative)
+This module is designed to be:
+- **Fail-closed**
+- **Deterministic**
+- **Bypass-resistant**
+- **Maintainer-safe**
+- **Integration-safe for Adamantine Wallet OS**
 
 ---
 
-## Architecture Role
+## Core Principles (v3)
 
-Guardian Wallet sits **between user intent and execution**.
+- **Fail-Closed by Default**  
+  Any invalid, malformed, ambiguous, or unexpected input results in `ERROR`.
 
-It evaluates:
-- Shield context hashes
-- Wallet-local policy constraints
-- User risk posture
+- **Deterministic Responses**  
+  Identical inputs always produce identical outputs (including `context_hash`).
 
-It outputs:
-- `ALLOW` · `WARN` · `DELAY` · `BLOCK`
-- Stable `reason_codes`
-- Deterministic contract envelopes
+- **Strict Contract Parsing**  
+  Unknown keys, invalid enums, invalid versions → hard reject.
 
-Guardian **never signs transactions** and **never mutates wallet state**.
+- **No Implicit Trust**  
+  UI, plugins, extensions, and maintainers are treated as untrusted.
 
----
-
-## Security Model
-
-Hard rules:
-- ❌ No silent allow paths
-- ❌ No heuristic guessing
-- ❌ No mutable outcomes
-- ❌ No hidden authority
-- ✅ Deterministic inputs → deterministic outputs
-- ✅ Explicit failure reasons
-- ✅ Fail-closed on ambiguity
-
-If Guardian cannot prove safety, **it blocks**.
+- **User Sovereignty**  
+  Guardian protects users even from buggy or malicious wallet updates.
 
 ---
 
-## Documentation Index
+## What Guardian v3 Protects Against
 
-### v3 (Current)
+- Malicious or compromised wallet updates
+- Plugin-based signing abuse
+- Transaction manipulation
+- Replay and escalation attempts
+- Silent bypass paths
+- Maintainer or supply-chain attacks
+
+Guardian v3 ensures **no one — including the wallet maintainer — can steal user funds**.
+
+---
+
+## Architecture Position
+
+```
+User Action
+   ↓
+Wallet UI / Client
+   ↓
+🛡️ Wallet Guardian (v3)
+   ↓
+EQC → WSQK → Shield Runtime
+   ↓
+Blockchain
+```
+
+---
+
+## Documentation
+
+### v3 (Active)
 - `docs/v3/GUARDIAN_V3.md`
 - `docs/v3/technical-spec-guardian-v3.md`
 - `docs/v3/guardian_attack_scenarios_v3.md`
 
 ### v2 (Archived)
-- `docs/v2/`
+- `docs/v2/` (reference only)
 
 ---
 
-## CI & Testing
+## Testing & CI
 
-All changes are gated by CI:
-- Determinism tests
-- Fail-closed enforcement
-- Contract validation
-- Schema strictness
-
-No test → no merge.
+- Pytest-based test suite
+- Enforced fail-closed behavior
+- Deterministic hashing tests
+- CI runs on Python 3.10 / 3.11 / 3.12
 
 ---
 
-## Security Policy
+## Security
 
-See [`SECURITY.md`](SECURITY.md) for vulnerability reporting
-and supported versions.
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and disclosure policy.
 
 ---
 
 ## License
 
-MIT
+MIT License — see [LICENSE](LICENSE)
 
 ---
 
-**Author:** DarekDGB  
-**Part of:** DigiByte Quantum Shield
+**Status:** 🔒 Guardian Wallet v3 — **LOCKED & ENFORCED**
