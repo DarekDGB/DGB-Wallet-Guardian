@@ -169,7 +169,9 @@ def test_adaptive_sink_emits_event_only_when_not_normal_and_severity_band_matche
     assert getattr(ev, "event_id") == "tx_emit"
     assert getattr(ev, "action") == "wallet_risk_decision"
     assert getattr(ev, "fingerprint") == "fp_wallet"
-    assert getattr(ev, "user_id") == "user123"
+
+    meta: Dict[str, Any] = getattr(ev, "metadata")
+    assert meta["user_id"] == "user123"
 
     sev = float(getattr(ev, "severity"))
     if decision.level is RiskLevel.ELEVATED:
@@ -179,7 +181,6 @@ def test_adaptive_sink_emits_event_only_when_not_normal_and_severity_band_matche
     else:
         assert sev == 0.9
 
-    meta: Dict[str, Any] = getattr(ev, "metadata")
     assert meta["destination"] == "NEW_ADDR"
     assert meta["amount"] == 1.0
     assert meta["score"] == decision.score
