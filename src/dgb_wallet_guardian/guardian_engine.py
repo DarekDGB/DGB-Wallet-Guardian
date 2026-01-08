@@ -10,7 +10,7 @@ from .models import (
     TransactionContext,
     GuardianDecision,
 )
-from .adaptive_bridge import emit_adaptive_event  # <— NEW
+from .adaptive_bridge import emit_adaptive_event  # <— Adaptive Core hook
 
 
 @dataclass
@@ -103,15 +103,16 @@ class GuardianEngine:
             )
             user_id = extra_signals.get("user_id")
 
+            # emit_adaptive_event signature is defined in adaptive_bridge.py
+            # (sink first positional arg, then event fields)
             emit_adaptive_event(
-                adaptive_sink=adaptive_sink,
+                adaptive_sink,
                 event_id=getattr(tx_ctx, "tx_id", "unknown_tx"),
-                layer="guardian_wallet",
-                anomaly_type="wallet_risk_decision",
+                action="wallet_risk_decision",
                 severity=severity,
                 fingerprint=wallet_fingerprint,
                 user_id=user_id,
-                metadata={
+                extra_meta={
                     "risk_level": getattr(level, "name", str(level)),
                     "score": score,
                     "actions": actions,
