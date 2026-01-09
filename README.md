@@ -1,107 +1,162 @@
-# 🛡️ DGB Wallet Guardian
+# 🔐 DigiByte Wallet Guardian (v3)
 
-[![Guardian Tests](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Shield Contract](https://img.shields.io/badge/Shield%20Contract-v3-red)
-![Security](https://img.shields.io/badge/security-fail--closed-critical)
+![CI](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-%E2%89%A590%25-brightgreen)
+![Status](https://img.shields.io/badge/status-CONTRACT--LOCKED-critical)
+
+**Shield Layer 4 • User-Side Protection Gate • Contract-Locked**
+
+Guardian Wallet is the **user-protection layer** of the DigiByte Quantum Shield.  
+It evaluates outgoing wallet intent and returns a **deterministic, fail-closed verdict**
+before any signing or execution can occur.
+
+> Guardian **never signs**, **never broadcasts**, and **never touches keys**.
 
 ---
 
-## Overview
+## What Guardian Wallet Is
 
-**DGB Wallet Guardian** is the **user-side protection layer** of the DigiByte Quantum Shield.
+Guardian Wallet v3 is a **contract gate**, not a wallet.
 
-It enforces **Shield Contract v3** rules at the wallet boundary, ensuring that **no transaction, signing request, or sensitive wallet action** can bypass security checks — even if the wallet UI, plugins, or integrations are compromised.
+It:
+- evaluates **wallet context**, **transaction context**, and **external signals**
+- produces a deterministic **allow / escalate / deny** outcome
+- emits **stable reason codes** for orchestration and audit
+- integrates cleanly with **Sentinel AI** and **Adaptive Core**
 
-This module is designed to be:
-- **Fail-closed**
-- **Deterministic**
-- **Bypass-resistant**
-- **Maintainer-safe**
-- **Integration-safe for Adamantine Wallet OS**
-
----
-
-## Core Principles (v3)
-
-- **Fail-Closed by Default**  
-  Any invalid, malformed, ambiguous, or unexpected input results in `ERROR`.
-
-- **Deterministic Responses**  
-  Identical inputs always produce identical outputs (including `context_hash`).
-
-- **Strict Contract Parsing**  
-  Unknown keys, invalid enums, invalid versions → hard reject.
-
-- **No Implicit Trust**  
-  UI, plugins, extensions, and maintainers are treated as untrusted.
-
-- **User Sovereignty**  
-  Guardian protects users even from buggy or malicious wallet updates.
+It does **not** execute anything.
 
 ---
 
-## What Guardian v3 Protects Against
+## What Guardian Wallet Is NOT
 
-- Malicious or compromised wallet updates
-- Plugin-based signing abuse
-- Transaction manipulation
-- Replay and escalation attempts
-- Silent bypass paths
-- Maintainer or supply-chain attacks
-
-Guardian v3 ensures **no one — including the wallet maintainer — can steal user funds**.
+Guardian Wallet does **not**:
+- hold or derive private keys
+- sign transactions
+- broadcast transactions
+- modify balances or state
+- replace DigiByte Core
+- bypass higher-level enforcement (EQC / WSQK / Orchestrator)
 
 ---
 
-## Architecture Position
+## Position in the DigiByte Quantum Shield
 
 ```
-User Action
-   ↓
-Wallet UI / Client
-   ↓
-🛡️ Wallet Guardian (v3)
-   ↓
-EQC → WSQK → Shield Runtime
-   ↓
-Blockchain
+┌─────────────────────────────────────────────┐
+│           Adamantine Wallet OS               │
+│  (UI, UX, signing flows, orchestration)     │
+└─────────────────────────────────────────────┘
+                     ▲
+                     │  verdict envelope
+┌─────────────────────────────────────────────┐
+│        Guardian Wallet v3 (Layer 4)          │
+│  User-side intent evaluation (fail-closed)  │
+└─────────────────────────────────────────────┘
+                     ▲
+                     │  signals / context
+┌─────────────────────────────────────────────┐
+│        Sentinel AI & DQSN (Layer 1–3)        │
+│  Network / anomaly / signal intelligence    │
+└─────────────────────────────────────────────┘
+                     ▲
+                     │
+┌─────────────────────────────────────────────┐
+│           Adaptive Core (Orchestrator)       │
+│  Correlation • learning • cross-layer logic │
+└─────────────────────────────────────────────┘
 ```
 
----
-
-## Documentation
-
-### v3 (Active)
-- `docs/v3/GUARDIAN_V3.md`
-- `docs/v3/technical-spec-guardian-v3.md`
-- `docs/v3/guardian_attack_scenarios_v3.md`
-
-### v2 (Archived)
-- `docs/v2/` (reference only)
+Guardian Wallet sits **between UI intent and signing authority**.
 
 ---
 
-## Testing & CI
+## Core Guarantees
 
-- Pytest-based test suite
-- Enforced fail-closed behavior
-- Deterministic hashing tests
-- CI runs on Python 3.10 / 3.11 / 3.12
+### ✅ Fail-Closed by Design
+- Any malformed, invalid, oversized, or unsafe request returns `outcome="deny"`.
+- Callers **must treat deny as BLOCK**.
+
+### ✅ Deterministic
+- Identical input → identical output → identical `context_hash`.
+- No time, randomness, or environment leakage.
+
+### ✅ Strict Contract
+- Unknown top-level keys are rejected.
+- Unknown nested keys are rejected.
+- NaN / ±Inf values are rejected.
+
+### ✅ No Hidden Authority
+- Guardian can only evaluate and signal.
+- It cannot escalate privileges or bypass enforcement.
 
 ---
 
-## Security
+## Public API (v3)
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting and disclosure policy.
+```python
+from dgb_wallet_guardian.v3 import GuardianWalletV3
+
+gw = GuardianWalletV3()
+result = gw.evaluate(request_dict)
+```
+
+### Outcome Mapping
+
+| Risk Level | Outcome |
+|-----------|---------|
+| NORMAL | allow |
+| ELEVATED | escalate |
+| HIGH / CRITICAL | deny |
+
+---
+
+## Contract Versioning
+
+- **Supported version:** `3`
+- Any other version → fail-closed
+
+Constants:
+- `COMPONENT = "guardian_wallet"`
+- `CONTRACT_VERSION = 3`
+
+---
+
+## Deterministic Context Hash
+
+Every response includes a `context_hash`:
+- SHA-256 over canonical JSON
+- Stable across runs
+- Safe for audit, replay, and orchestration
+
+---
+
+## Tests & Guarantees
+
+Guardian Wallet v3 is regression-locked with tests that enforce:
+- strict schema validation
+- fail-closed behavior
+- deterministic hashing
+- adapter safety (v3 → v2 compatibility)
+- ≥90% coverage gate in CI
+
+**Tests define truth.**
+
+---
+
+## Status
+
+**Guardian Wallet v3 is COMPLETE and LOCKED.**
+
+Further changes require:
+- contract version bump
+- regression tests
+- CI proof
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE)
-
----
-
-**Status:** 🔒 Guardian Wallet v3 — **LOCKED & ENFORCED**
+MIT
