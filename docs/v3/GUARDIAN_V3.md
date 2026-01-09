@@ -1,68 +1,78 @@
-# Guardian Wallet v3 — Shield Contract v3
+# Guardian Wallet — Technical Specification v3
 
-**Status:** Active • Contract-Locked • CI-Enforced  
-**Component:** `guardian_wallet`  
-**Contract Version:** `3`
-
-Guardian Wallet v3 is the **user-side protection gate** for DigiByte wallets.
-It evaluates a wallet's outgoing intent (transaction context + wallet context + signals)
-and returns a **deterministic, fail-closed verdict envelope**.
-
-This module **does not sign, broadcast, or mutate state**. It only evaluates and reports.
+> **Author:** DarekDGB  
+> **Status:** Authoritative (v3) • Regression‑Locked  
+> **Scope:** Shield Layer 4 — Guardian Wallet  
+> **License:** MIT
 
 ---
 
-## Core Guarantees
+## 1. Purpose
 
-1. **Fail‑Closed Semantics**
-   - Any malformed, incomplete, oversized, or invalid request returns `outcome="deny"`.
-   - Errors are reported via stable `reason_codes`.
+Guardian Wallet v3 is a **contract gate** that evaluates outgoing wallet intent and returns a
+**deterministic, fail‑closed verdict envelope**.
 
-2. **Deterministic Output**
-   - Identical valid inputs produce identical outputs, including `context_hash`.
-   - No time, randomness, environment, or global state may influence results.
+It exists to:
+- **observe** wallet + transaction context
+- **evaluate** risk using an auditable rule engine (via the v2 engine adapter)
+- **signal** allow / escalate / deny to upstream orchestrators
 
-3. **Strict Contract Parsing**
-   - Unknown **top-level** keys are rejected.
-   - Unknown **nested** keys in `wallet_ctx`, `tx_ctx`, or `extra_signals` are rejected.
-
-4. **Stable Reason Codes**
-   - Error and outcome codes come from a single enum source.
-   - Rule IDs extracted from v2 engine reasons are deterministic, de-duplicated, and sorted.
-
-5. **No Hidden Authority**
-   - Guardian Wallet cannot sign, mint, broadcast, or alter wallet state.
-   - It only evaluates and returns a verdict envelope.
+Guardian Wallet v3 does **not** execute, sign, broadcast, or mutate state.
 
 ---
 
-## Non‑Goals
+## 2. System Boundaries (Non‑Goals)
 
-Guardian Wallet v3 does **not**:
+Guardian Wallet v3 explicitly does **not**:
+- hold / derive / access private keys
+- sign transactions
+- broadcast transactions or perform network I/O
+- modify wallet balances or persistent state
+- replace runtime enforcement (EQC / WSQK / Orchestrator)
 
-- Hold, derive, or access private keys
-- Sign transactions
-- Broadcast transactions
-- Perform network I/O
-- Modify wallet balances or state
-- Replace runtime enforcement (EQC / WSQK / Orchestrator)
+This module is an **evaluator**, not an executor.
 
 ---
 
-## Request Schema (v3)
+## 3. Public Entrypoint
 
-All requests **must** be a JSON object with only these top-level keys:
+The public v3 entrypoint is:
+
+- `GuardianWalletV3.evaluate(request: Dict[str, Any]) -> Dict[str, Any]`
+
+Consumers MUST treat:
+- `outcome="deny"` as **BLOCK**
+- `outcome="escalate"` as **REQUIRE EXTRA CONFIRMATION / USER ACTION**
+
+Consumers MUST NOT call internal engine methods directly.
+
+---
+
+## 4. Contract Versioning
+
+- Supported contract version: **3 only**
+- Requests with any other version fail closed.
+
+Constants:
+- `CONTRACT_VERSION = 3`
+- `COMPONENT = "guardian_wallet"`
+
+---
+
+## 5. Request Schema (Strict)
+
+Top‑level keys (unknown keys are rejected):
 
 | Field | Type | Required | Notes |
 |---|---|---:|---|
 | `contract_version` | int | ✅ | Must be `3` |
-| `component` | string | ✅ | Must be `guardian_wallet` |
-| `request_id` | string | ✅ | Caller-defined identifier |
-| `wallet_ctx` | object | ⛔ default `{}` | Strict allowlist (see below) |
-| `tx_ctx` | object | ⛔ default `{}` | Strict allowlist (see below) |
-| `extra_signals` | object | ⛔ default `{}` | Strict allowlist (see below) |
+| `component` | str | ✅ | Must be `guardian_wallet` |
+| `request_id` | str | ✅ | Caller‑defined identifier |
+| `wallet_ctx` | object | ⛔ default `{}` | Strict allowlist |
+| `tx_ctx` | object | ⛔ default `{}` | Strict allowlist |
+| `extra_signals` | object | ⛔ default `{}` | Strict allowlist |
 
-### Nested allowlists (strict)
+Nested allowlists:
 
 `wallet_ctx` allowed keys:
 - `balance`
@@ -84,39 +94,53 @@ All requests **must** be a JSON object with only these top-level keys:
 - `session`
 - `trusted_device`
 
-**Any unknown key** at any level fails closed with `outcome="deny"`.
+---
 
-### Abuse caps
+## 6. Deterministic Abuse Caps
 
-- Requests larger than **128KB** (deterministic encoded size) are rejected.
+- Requests larger than **128KB** (deterministic encoded size) fail closed.
+- Size is computed via canonical JSON encoding (sorted keys, compact separators, UTF‑8).
 
-### Bad number rules
-
-Numeric fields used by the gate must be **finite**:
-- rejects `NaN`, `+Inf`, `-Inf`
+Constant:
+- `MAX_PAYLOAD_BYTES = 128_000`
 
 ---
 
-## Response Envelope (v3)
+## 7. Bad Number Rules (NaN/Inf)
 
-Guardian Wallet returns the following response:
+Numeric fields used by the gate MUST be finite.
+If any are `NaN`, `+Inf`, or `-Inf`, the request fails closed.
 
-| Field | Description |
-|---|---|
-| `contract_version` | Always `3` |
-| `component` | Always `guardian_wallet` |
-| `request_id` | Echoed from request |
-| `context_hash` | Deterministic SHA‑256 over the contract-defined context (see below) |
-| `outcome` | `"allow"` \| `"escalate"` \| `"deny"` |
-| `risk.level` | One of model levels (e.g. `NORMAL`, `ELEVATED`, `HIGH`, `CRITICAL`) |
-| `risk.score` | Float score from the engine |
-| `reason_codes` | Stable codes + extracted rule IDs (sorted / deduped) |
-| `evidence.actions` | Engine suggested actions |
-| `evidence.reasons` | Engine reasons (human-readable) |
-| `meta.fail_closed` | Always `true` |
-| `meta.latency_ms` | Deterministic `0` in reference implementation |
+Checked fields:
+- `wallet_ctx.balance`
+- `wallet_ctx.typical_amount`
+- `wallet_ctx.wallet_age_days`
+- `wallet_ctx.tx_count_24h`
+- `tx_ctx.amount`
+- `tx_ctx.fee`
 
-### Outcome mapping
+---
+
+## 8. Evaluation Flow (Normative)
+
+1) Parse request via `GWv3Request.from_dict` (strict top‑level validation).
+2) Enforce `contract_version == 3` and `component == "guardian_wallet"`.
+3) Enforce payload size cap.
+4) Enforce nested allowlists (`wallet_ctx`, `tx_ctx`, `extra_signals`).
+5) Enforce finite number rules.
+6) Evaluate risk using the **v2 engine via adapter**:
+   - `WalletGuardian.evaluate_transaction(...)`
+
+**Adapter rule (compatibility / safety):**
+- v3 may allow additional context keys that the v2 dataclasses do not accept.
+- The adapter MUST filter `wallet_ctx` / `tx_ctx` to the v2 model fields before construction.
+- This prevents runtime TypeErrors and preserves fail‑closed semantics at the v3 layer.
+
+---
+
+## 9. Outcome Mapping
+
+Risk level → outcome:
 
 - `RiskLevel.NORMAL` → `outcome="allow"`
 - `RiskLevel.ELEVATED` → `outcome="escalate"`
@@ -124,13 +148,54 @@ Guardian Wallet returns the following response:
 
 ---
 
-## Context Hash (Deterministic)
+## 10. Response Envelope (v3)
+
+Guardian Wallet v3 returns:
+
+- `contract_version` (always `3`)
+- `component` (always `guardian_wallet`)
+- `request_id` (echoed)
+- `context_hash` (deterministic SHA‑256)
+- `outcome` (`allow` | `escalate` | `deny`)
+- `risk.level` (engine level)
+- `risk.score` (float)
+- `reason_codes` (stable codes + extracted rule IDs)
+- `evidence.actions` / `evidence.reasons` (diagnostic)
+- `meta.fail_closed` (always `true`)
+- `meta.latency_ms` (deterministic `0` in reference implementation)
+
+---
+
+## 11. Reason Codes (Stability Rules)
+
+Reason codes are **stable identifiers**. Consumers MUST NOT rely on human strings.
+
+Rules:
+- The first code is always the stable **outcome code**:
+  - `GW_OK_HEALTHY_ALLOW`
+  - `GW_ESCALATE_ELEVATED`
+  - `GW_DENY_HIGH_OR_CRITICAL`
+- Additional codes are extracted rule IDs from engine reasons:
+  - parsed from strings like `"RULE_ID: description"`
+  - de‑duplicated and lexicographically sorted for determinism
+
+Error paths emit a single stable error code, e.g.:
+- `GW_ERROR_SCHEMA_VERSION`
+- `GW_ERROR_INVALID_REQUEST`
+- `GW_ERROR_UNKNOWN_TOP_LEVEL_KEY`
+- `GW_ERROR_UNKNOWN_WALLET_KEY`
+- `GW_ERROR_UNKNOWN_TX_KEY`
+- `GW_ERROR_UNKNOWN_SIGNAL_KEY`
+- `GW_ERROR_OVERSIZE`
+- `GW_ERROR_BAD_NUMBER`
+
+---
+
+## 12. Context Hash (Deterministic)
 
 `context_hash` is computed using canonical JSON + SHA‑256.
 
-### SUCCESS / ESCALATE / DENY (non-error path)
-
-Hash input is the canonical JSON of:
+### 12.1 Non‑Error Path Hash Payload
 
 ```json
 {
@@ -146,9 +211,7 @@ Hash input is the canonical JSON of:
 }
 ```
 
-### ERROR (fail-closed path)
-
-Hash input is the canonical JSON of:
+### 12.2 Error Path Hash Payload (Fail‑Closed)
 
 ```json
 {
@@ -161,32 +224,37 @@ Hash input is the canonical JSON of:
 
 ---
 
-## Invariants (Audit IDs)
+## 13. Determinism Requirements (Hard)
 
-- **GW_V3_INV_001** — Unknown keys rejected (top-level and nested)
-- **GW_V3_INV_002** — Deterministic output for identical input
-- **GW_V3_INV_003** — Fail‑closed on schema violation / oversize / bad numbers
-- **GW_V3_INV_004** — No time or randomness dependency
-- **GW_V3_INV_005** — Reason codes stable and enum-backed
-- **GW_V3_INV_006** — Order‑independent canonical hashing
-
-Each invariant is enforced by regression tests in CI.
+For identical valid input:
+- response envelope MUST be identical
+- `context_hash` MUST be identical
+- `reason_codes` ordering MUST be identical
+- no time / randomness / environment can influence output
 
 ---
 
-## Integration Rules
+## 14. Required Tests (Regression Locks)
 
-- Consumers MUST call the **v3 public entrypoint** (`GuardianWalletV3.evaluate`).
-- Consumers MUST treat `outcome="deny"` as **BLOCK**.
-- Consumers MUST NOT call internal engine methods directly.
+The following behaviors MUST be regression‑locked in CI:
+
+- strict rejection of unknown top‑level keys
+- strict rejection of unknown nested keys (wallet/tx/signals)
+- oversize cap rejection
+- NaN/Inf rejection
+- deterministic `context_hash` for error paths
+- deterministic output for repeated identical input
+- adapter filtering prevents TypeError for v3‑allowed keys not present in v2 models
 
 ---
 
-## Status
+## 15. Final Authority Statement
 
-Guardian Wallet v3 is **locked**.
+**Tests define truth.**  
+This specification must match the tests and the implementation.
 
-Changes require:
-- Contract discipline (semantic changes → bump version)
-- Regression tests
-- CI proof
+Guardian Wallet v3 is **LOCKED** when:
+- CI passes
+- coverage gate passes
+- all regression tests prove the invariants above
+
