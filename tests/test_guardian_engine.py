@@ -66,6 +66,7 @@ def test_normal_tx_no_matches_and_no_adaptive_event():
     assert decision.reasons == []
     assert decision.score == 0.0
 
+    # Must not emit for NORMAL
     assert called == []
 
     assert eng.get_last_decision() == decision
@@ -169,9 +170,7 @@ def test_adaptive_sink_emits_event_only_when_not_normal_and_severity_band_matche
     assert getattr(ev, "event_id") == "tx_emit"
     assert getattr(ev, "action") == "wallet_risk_decision"
     assert getattr(ev, "fingerprint") == "fp_wallet"
-
-    meta: Dict[str, Any] = getattr(ev, "metadata")
-    assert meta["user_id"] == "user123"
+    assert getattr(ev, "user_id") == "user123"
 
     sev = float(getattr(ev, "severity"))
     if decision.level is RiskLevel.ELEVATED:
@@ -181,7 +180,47 @@ def test_adaptive_sink_emits_event_only_when_not_normal_and_severity_band_matche
     else:
         assert sev == 0.9
 
+    meta: Dict[str, Any] = getattr(ev, "metadata")
     assert meta["destination"] == "NEW_ADDR"
     assert meta["amount"] == 1.0
     assert meta["score"] == decision.score
     assert "actions" in meta
+
+
+def test_engine_swallows_adaptive_sink_exceptions_and_still_returns_decision():
+    """
+    Regression lock:
+    Adaptive Core sink must never be able to break Guardian decision flow.
+
+    If adaptive_sink raises, GuardianEngine must still return a decision
+    (fail-closed semantics are not allowed to be bypassed by integration errors).
+    """
+    eng = GuardianEngine()
+
+    def sink(_ev: Any) -> None:
+        raise RuntimeError("sink broke")
+
+    wallet = W(
+        balance=1000.0,
+        typical_amount=None,
+        known_addresses={"KNOWN"},
+        recent_send_count=0,
+        recent_window_seconds=9999,
+        typical_fee=None,
+        wallet_id="wallet_sink_boom",
+    )
+    tx = T(amount=1.0, to_address="NEW_ADDR", tx_id="tx_sink_boom")
+
+    decision = eng.evaluate_transaction(
+        wallet,
+        tx,
+        extra_signals={
+            "adaptive_sink": sink,
+            "wallet_fingerprint": "fp",
+            "user_id": "u",
+        },
+    )
+
+    # New destination triggers at least one rule -> non-NORMAL -> emit attempt.
+    # Sink exception must not prevent decision return.
+    assert decision.level is not RiskLevel.NORMAL
