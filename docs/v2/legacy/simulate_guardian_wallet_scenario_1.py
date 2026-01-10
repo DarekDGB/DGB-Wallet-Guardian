@@ -1,3 +1,10 @@
+# ⚠️ LEGACY (v2) SIMULATION SCRIPT — NOT USED IN v3
+#
+# This script documents historical Guardian Wallet v2 behavior.
+# It is NOT part of the v3 contract, NOT deterministic,
+# and NOT compatible with Guardian Wallet v3 APIs.
+#
+# Kept for reference and historical analysis only.
 # Guardian Wallet v2 — Simulation Script (Scenario GW-SIM-001)
 
 Save the following code as **`simulate_guardian_wallet_scenario_1.py`** in the root of your  
