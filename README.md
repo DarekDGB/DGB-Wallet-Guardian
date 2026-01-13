@@ -159,4 +159,4 @@ Further changes require:
 
 ## License
 
-MIT
+MIT DarekDGB 2025
