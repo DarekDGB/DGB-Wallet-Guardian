@@ -9,8 +9,7 @@
 **Shield Layer 4 • User-Side Protection Gate • Contract-Locked**
 
 Guardian Wallet is the **user-protection layer** of the DigiByte Quantum Shield.  
-It evaluates outgoing wallet intent and returns a **deterministic, fail-closed verdict**
-before any signing or execution can occur.
+It evaluates wallet intent and verified auth context, then returns a **deterministic, fail-closed verdict** before any signing or execution can occur.
 
 > Guardian **never signs**, **never broadcasts**, and **never touches keys**.
 
@@ -22,9 +21,10 @@ Guardian Wallet v3 is a **contract gate**, not a wallet.
 
 It:
 - evaluates **wallet context**, **transaction context**, and **external signals**
+- evaluates **Q-ID authentication facts** through explicit `mode="qid_auth"`
 - produces a deterministic **allow / escalate / deny** outcome
 - emits **stable reason codes** for orchestration and audit
-- integrates cleanly with **Sentinel AI** and **Adaptive Core**
+- integrates cleanly with **Sentinel AI**, **Q-ID**, and **Adaptive Core**
 
 It does **not** execute anything.
 
@@ -44,51 +44,47 @@ Guardian Wallet does **not**:
 
 ## Position in the DigiByte Quantum Shield
 
-```
+```text
 ┌─────────────────────────────────────────────┐
-│           Adamantine Wallet OS               │
+│           Adamantine Wallet OS              │
 │  (UI, UX, signing flows, orchestration)     │
 └─────────────────────────────────────────────┘
                      ▲
                      │  verdict envelope
 ┌─────────────────────────────────────────────┐
-│        Guardian Wallet v3 (Layer 4)          │
-│  User-side intent evaluation (fail-closed)  │
+│        Guardian Wallet v3 (Layer 4)         │
+│   User-side intent + auth evaluation gate   │
 └─────────────────────────────────────────────┘
                      ▲
-                     │  signals / context
-┌─────────────────────────────────────────────┐
-│        Sentinel AI & DQSN (Layer 1–3)        │
-│  Network / anomaly / signal intelligence    │
-└─────────────────────────────────────────────┘
-                     ▲
-                     │
-┌─────────────────────────────────────────────┐
-│           Adaptive Core (Orchestrator)       │
-│  Correlation • learning • cross-layer logic │
-└─────────────────────────────────────────────┘
+          ┌──────────┴──────────┐
+          │                     │
+  tx request context     Q-ID verified auth facts
+          │                     │
+┌─────────────────┐     ┌──────────────────────┐
+│ wallet / tx flow│     │ qid_auth mode input  │
+└─────────────────┘     └──────────────────────┘
 ```
 
-Guardian Wallet sits **between UI intent and signing authority**.
+Guardian Wallet sits **between intent and authority**.
 
 ---
 
 ## Core Guarantees
 
-### ✅ Fail-Closed by Design
+### Fail-Closed by Design
 - Any malformed, invalid, oversized, or unsafe request returns `outcome="deny"`.
 - Callers **must treat deny as BLOCK**.
 
-### ✅ Deterministic
+### Deterministic
 - Identical input → identical output → identical `context_hash`.
 - No time, randomness, or environment leakage.
 
-### ✅ Strict Contract
+### Strict Contract
 - Unknown top-level keys are rejected.
 - Unknown nested keys are rejected.
 - NaN / ±Inf values are rejected.
 
-### ✅ No Hidden Authority
+### No Hidden Authority
 - Guardian can only evaluate and signal.
 - It cannot escalate privileges or bypass enforcement.
 
@@ -103,10 +99,16 @@ gw = GuardianWalletV3()
 result = gw.evaluate(request_dict)
 ```
 
-### Outcome Mapping
+Supported modes:
+- `tx`
+- `qid_auth`
+
+---
+
+## Outcome Mapping
 
 | Risk Level | Outcome |
-|-----------|---------|
+|---|---|
 | NORMAL | allow |
 | ELEVATED | escalate |
 | HIGH / CRITICAL | deny |
@@ -124,12 +126,32 @@ Constants:
 
 ---
 
+## `qid_auth` Mode Summary
+
+Guardian Wallet v3 supports direct evaluation of verified Q-ID authentication facts.
+
+For `mode="qid_auth"`:
+- `wallet_ctx` must be empty
+- `tx_ctx` must be empty
+- `auth_ctx` carries verified Q-ID facts
+- `extra_signals` carries optional device / Sentinel signals
+
+Typical auth outcomes:
+- `allow` for clean verified auth
+- `escalate` for step-up conditions
+- `deny` for unverified or invalid auth requests
+
+See:
+- `docs/v3/GUARDIAN_QID_AUTH_INTEGRATION.md`
+
+---
+
 ## Deterministic Context Hash
 
 Every response includes a `context_hash`:
 - SHA-256 over canonical JSON
-- Stable across runs
-- Safe for audit, replay, and orchestration
+- stable across runs
+- safe for audit, replay, and orchestration
 
 ---
 
@@ -140,6 +162,7 @@ Guardian Wallet v3 is regression-locked with tests that enforce:
 - fail-closed behavior
 - deterministic hashing
 - adapter safety (v3 → v2 compatibility)
+- `qid_auth` mode correctness
 - ≥90% coverage gate in CI
 
 **Tests define truth.**
@@ -149,6 +172,9 @@ Guardian Wallet v3 is regression-locked with tests that enforce:
 ## Status
 
 **Guardian Wallet v3 is COMPLETE and LOCKED.**
+
+First public stable tag target:
+- `v3.0.0`
 
 Further changes require:
 - contract version bump
