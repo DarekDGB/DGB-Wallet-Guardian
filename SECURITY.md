@@ -6,7 +6,8 @@ Only **Guardian Wallet v3** is supported and security-maintained.
 
 | Version | Supported |
 |--------|-----------|
-| v3     | ✅ Yes |
+| v3.1.0 | ✅ Yes — current hardened release |
+| v3.0.0 | ✅ Yes — previous stable baseline |
 | v2     | ❌ No (archived) |
 
 All legacy documentation is retained **for reference only** and is **non-authoritative**.
@@ -23,9 +24,11 @@ Core guarantees:
 - No silent allow paths
 - No mutable decision state
 - No hidden authority
-- CI-enforced invariants
+- CI-enforced 100% coverage gate
 
 If Guardian cannot **prove safety**, it **blocks execution**.
+
+Current release posture: **v3.1.0 Shield hardening**, with 89 tests passing and 100% coverage enforced in CI.
 
 ---
 
