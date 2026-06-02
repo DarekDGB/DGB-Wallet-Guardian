@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-%E2%89%A590%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
 ![Status](https://img.shields.io/badge/status-CONTRACT--LOCKED-critical)
 
 **Shield Layer 4 • User-Side Protection Gate • Contract-Locked**
@@ -158,28 +158,64 @@ Every response includes a `context_hash`:
 ## Tests & Guarantees
 
 Guardian Wallet v3 is regression-locked with tests that enforce:
+
 - strict schema validation
 - fail-closed behavior
 - deterministic hashing
 - adapter safety (v3 → v2 compatibility)
 - `qid_auth` mode correctness
-- ≥90% coverage gate in CI
+- invalid mode rejection
+- parser exception fail-closed handling
+- non-dict context rejection
+- oversized / unserialisable payload rejection
+- Q-ID auth field validation
+- Sentinel escalation paths
+- device mismatch escalation
+- Guardian Engine HIGH / CRITICAL severity paths
+- stable normalization helper behavior
+- explicit unreachable safety fallbacks
 
-**Tests define truth.**
+The CI workflow enforces:
+
+```bash
+pytest --cov=dgb_wallet_guardian --cov-fail-under=100 -q
+```
+
+Current verified result:
+
+```text
+89 passed
+TOTAL 526 statements, 0 missed
+Coverage 100.00%
+```
+
+**Tests define truth. No release is considered locked unless CI proves 100% coverage.**
 
 ---
 
 ## Status
 
-**Guardian Wallet v3 is COMPLETE and LOCKED.**
+**Guardian Wallet v3 is COMPLETE, LOCKED, and now hardened to the Shield v3.1.0 coverage standard.**
 
-First public stable tag target:
+Stable release baseline:
 - `v3.0.0`
 
+Current hardening track:
+- `v3.1.0`
+
+Current Guardian hardening proof:
+- 89 tests passing
+- 526 statements covered
+- 0 missed statements
+- 100% coverage enforced in CI
+
 Further changes require:
-- contract version bump
+
+- contract version review
 - regression tests
 - CI proof
+- no weakening of the 100% coverage gate
+- no undocumented behavior change
 
 ---
 
