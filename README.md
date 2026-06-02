@@ -1,4 +1,4 @@
-# 🔐 DigiByte Wallet Guardian (v3)
+# 🔐 DigiByte Wallet Guardian (v3.1.0)
 
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -6,7 +6,7 @@
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
 ![Status](https://img.shields.io/badge/status-CONTRACT--LOCKED-critical)
 
-**Shield Layer 4 • User-Side Protection Gate • Contract-Locked**
+**Shield Layer 4 • User-Side Protection Gate • Contract-Locked • v3.1.0 Hardened**
 
 Guardian Wallet is the **user-protection layer** of the DigiByte Quantum Shield.  
 It evaluates wallet intent and verified auth context, then returns a **deterministic, fail-closed verdict** before any signing or execution can occur.
@@ -197,11 +197,11 @@ Coverage 100.00%
 
 **Guardian Wallet v3 is COMPLETE, LOCKED, and now hardened to the Shield v3.1.0 coverage standard.**
 
-Stable release baseline:
-- `v3.0.0`
-
-Current hardening track:
+Current stable hardening release:
 - `v3.1.0`
+
+Previous stable baseline:
+- `v3.0.0`
 
 Current Guardian hardening proof:
 - 89 tests passing
