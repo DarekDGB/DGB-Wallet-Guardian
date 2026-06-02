@@ -1,7 +1,7 @@
 # Guardian Wallet v3 — Q-ID Auth Integration
 
 **Status:** first stable auth-mode integration  
-**Guardian Wallet release target:** `v3.0.0`
+**Guardian Wallet release target:** `v3.1.0`
 
 ---
 
