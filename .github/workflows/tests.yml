@@ -43,4 +43,4 @@ jobs:
 
       - name: Run tests with coverage gate
         run: |
-          pytest --cov=dgb_wallet_guardian --cov-fail-under=90 -q
+          pytest --cov=dgb_wallet_guardian --cov-fail-under=100 -q
