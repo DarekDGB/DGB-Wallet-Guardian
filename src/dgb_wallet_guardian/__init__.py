@@ -13,4 +13,4 @@ from .client import WalletGuardian
 from .v3 import GuardianWalletV3
 
 __all__ = ["WalletGuardian", "GuardianWalletV3"]
-__version__ = "3.0.0"
+__version__ = "3.1.0"
