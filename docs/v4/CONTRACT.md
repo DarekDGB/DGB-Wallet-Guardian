@@ -4,9 +4,11 @@ Author attribution: DarekDGB
 
 ## Status
 
-This document defines the first Guardian Wallet Shield v4 component-verdict contract.
+This document defines the Guardian Wallet Shield v4 component-verdict contract.
 
 This is a parallel v4 contract. It does not modify or replace the audited v3.2 Guardian Wallet deterministic contract.
+
+V4.8F-A adds a real ML-DSA backend adapter path for Guardian Wallet component evidence. The deterministic TEST-ONLY path remains separate and is retained only for contract and CI locking.
 
 ## Authority Boundary
 
@@ -98,6 +100,39 @@ FN-DSA means FN-DSA, based on Falcon.
 
 FN-DSA is not ML-DSA and cannot satisfy the ML-DSA requirement.
 
+## Real ML-DSA Backend Path
+
+Guardian Wallet V4.8F-A introduces an optional real backend adapter for the required `ml-dsa` path:
+
+```text
+src/dgb_wallet_guardian/v4/real_crypto_backend.py
+src/dgb_wallet_guardian/v4/oqs_mldsa_backend.py
+```
+
+The OQS adapter maps Shield algorithm `ml-dsa` to OQS mechanism `ML-DSA-65`.
+
+The adapter:
+
+- does not vendor liboqs;
+- does not add a hard `pyproject.toml` dependency;
+- lazily imports `oqs` only when used;
+- rejects missing or disabled OQS mechanisms;
+- rejects wrong OQS mechanism selection;
+- rejects malformed `b64u:` public keys or signatures;
+- rejects surrounding whitespace in real-backend signature fields;
+- rejects empty decoded real binary material;
+- rejects deterministic TEST-ONLY key material at the real backend boundary;
+- wraps native OQS/liboqs and backend adapter exceptions inside the Guardian Wallet real-backend fail-closed error hierarchy;
+- provides no fallback from real backend mode to deterministic TEST-ONLY signatures.
+
+Real binary signatures and public keys use this encoding shape:
+
+```text
+b64u:<unpadded-base64url-bytes>
+```
+
+This step does not add a production `classical-ed25519` backend. A production real-backend deployment must still satisfy both required policy paths.
+
 ## Freshness and Anti-Replay
 
 Every signed Guardian Wallet v4 verdict carries:
@@ -133,11 +168,21 @@ A verifier must reject:
 - forbidden authority metadata
 - malformed canonical payload
 - `null` or float values in signed fields
+- missing OQS backend when real ML-DSA mode is selected
+- disabled or wrong OQS ML-DSA mechanism
+- malformed `b64u:` real binary material
+- structurally valid but backend-invalid OQS key or signature material
+- native OQS/liboqs signing, verification, import, mechanism-discovery, version-discovery, or private-key-resolution exception
+- generic backend sign, verify, algorithm-discovery, or non-boolean-verify-result exception
+- extra fields in real-backend signature entries or registry key records
+- deterministic TEST-ONLY material at the real backend boundary
 
 ## Test-Only Cryptography Warning
 
-The V4.5A Guardian Wallet pilot uses deterministic TEST-ONLY signatures for contract and CI locking.
+The original Guardian Wallet v4 pilot uses deterministic TEST-ONLY signatures for contract and CI locking.
 
 These test signatures are not production private keys and are not production ML-DSA or FN-DSA implementations.
 
 Production PQC adapters must satisfy the same signed payload, domain tag, key role, key version, freshness, and policy rules.
+
+The V4.8F-A OQS adapter is a real-backend path for Guardian Wallet component evidence only. It does not create transaction signing, broadcast, consensus, or final-execution authority.
