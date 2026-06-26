@@ -27,9 +27,9 @@ The Shield Orchestrator verifies Guardian Wallet component evidence before produ
 
 Shield v4 policy `policy.v1` uses these names:
 
-- `classical-ed25519` â required classical signature path;
-- `ml-dsa` â required PQC path; ML-DSA was formerly CRYSTALS-Dilithium;
-- `fn-dsa` â optional evidence path based on Falcon.
+- `classical-ed25519` Ã¢ÂÂ required classical signature path;
+- `ml-dsa` Ã¢ÂÂ required PQC path; ML-DSA was formerly CRYSTALS-Dilithium;
+- `fn-dsa` Ã¢ÂÂ optional evidence path based on Falcon.
 
 `fn-dsa` is not ML-DSA. It must never override failure of the required `classical-ed25519` or `ml-dsa` paths.
 
@@ -147,6 +147,22 @@ ml-dsa
 ```
 
 A production real-backend deployment must satisfy both required paths. This Guardian Wallet OQS adapter alone does not downgrade policy.v1 and does not allow ML-DSA to replace the required classical path.
+
+
+## V4.8G gated real-liboqs proof
+
+Default package CI proves the backend interface contract and fail-closed behavior using deterministic fake backends. It does not claim that live liboqs ML-DSA ran.
+
+A separate optional GitHub Actions workflow exercises real liboqs only when the dedicated job installs liboqs, sets `SHIELD_V4_REAL_OQS=1`, and runs:
+
+```text
+python -m pytest --override-ini addopts='' tests/test_v48g_real_oqs_mldsa_backend.py -q --junitxml=shield-v4-real-oqs-results.xml
+python scripts/assert_real_oqs_junit_not_skipped.py shield-v4-real-oqs-results.xml
+```
+
+That gated proof checks that `ML-DSA-65` is enabled, generates a real keypair through liboqs, signs through the Guardian Wallet backend, verifies through the same backend, rejects a tampered signature, rejects a cross-key verification attempt, and rejects wrong-length public-key material through the GuardianWalletV4RealCryptoBackendError hierarchy.
+
+A public claim that live liboqs ML-DSA verified for Guardian Wallet requires that dedicated workflow to finish green with the JUnit guard proving `skipped == 0`, `failures == 0`, and `errors == 0`. Full release-grade real-backend proof remains a V4.10 release gate.
 
 ## Third-party attribution
 
