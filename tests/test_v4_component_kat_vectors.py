@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from sentinel_ai_v2.v4.signing import (
+from dgb_wallet_guardian.v4.signing import (
     COMPONENT_VERDICT_DOMAIN,
     domain_separated_payload_bytes,
     signed_payload_hash,
