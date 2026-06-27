@@ -1,22 +1,22 @@
-# DGB Sentinel AI Shield v4 Test Matrix
+# Guardian Wallet Shield v4 Test Matrix
 
 Author attribution: DarekDGB
 
 ## Scope
 
-This matrix covers the DGB Sentinel AI Shield v4 component-verdict contract and the V4.8F-C real ML-DSA backend path.
+This matrix covers the Guardian Wallet Shield v4 component-verdict contract and the V4.8F-A real ML-DSA backend path.
 
-The goal is to prove DGB Sentinel AI can produce and verify v4 component evidence while keeping TEST-ONLY deterministic signatures separate from real backend mode.
+The goal is to prove Guardian Wallet can produce and verify v4 component evidence while keeping TEST-ONLY deterministic signatures separate from real backend mode.
 
 ## Positive Tests
 
 | Test | Expected result |
 |---|---|
-| build unsigned DGB Sentinel AI v4 payload | deterministic payload with `contract_version: 4` |
+| build unsigned Guardian Wallet v4 payload | deterministic payload with `contract_version: 4` |
 | add required classical + ML-DSA test signatures | signed envelope validates under TEST-ONLY verifier |
 | validate with matching context hash | verification summary returned |
-| verify required role | `shield_component_sentinel_ai` only |
-| build real crypto signature input | frozen DGB Sentinel AI component domain bytes |
+| verify required role | `shield_component_guardian_wallet` only |
+| build real crypto signature input | frozen Guardian Wallet component domain bytes |
 | build real ML-DSA signature entry through backend adapter | `b64u:` signature entry produced |
 | verify real ML-DSA signature entry through backend adapter | verification returns true |
 | lazy OQS fake backend exposes version | backend metadata includes locked mechanism |
@@ -42,9 +42,9 @@ The goal is to prove DGB Sentinel AI can produce and verify v4 component evidenc
 | KAT payload mutated with null or float | fail closed before signing |
 | duplicate JSON key while parsing | fail closed |
 | real backend missing required algorithm support | fail closed |
-| real backend algorithm discovery exception | fail closed through DGB Sentinel AI backend error hierarchy |
-| real backend sign exception | fail closed through DGB Sentinel AI backend error hierarchy |
-| real backend verify exception | fail closed through DGB Sentinel AI backend error hierarchy |
+| real backend algorithm discovery exception | fail closed through Guardian Wallet backend error hierarchy |
+| real backend sign exception | fail closed through Guardian Wallet backend error hierarchy |
+| real backend verify exception | fail closed through Guardian Wallet backend error hierarchy |
 | real backend verify returns non-boolean result | fail closed |
 | real backend receives TEST-ONLY key id or public key | fail closed |
 | real backend receives TEST-ONLY private key reference | fail closed |
@@ -54,16 +54,15 @@ The goal is to prove DGB Sentinel AI can produce and verify v4 component evidenc
 | surrounding whitespace in real backend fields | fail closed |
 | empty decoded real binary material | fail closed |
 | OQS import missing when backend selected | fail closed |
-| OQS import raises native exception | fail closed through DGB Sentinel AI backend error hierarchy |
+| OQS import raises native exception | fail closed through Guardian Wallet backend error hierarchy |
 | OQS `ML-DSA-65` mechanism disabled | fail closed |
 | wrong OQS mechanism requested | fail closed |
-| OQS mechanism discovery exception or non-iterable mechanism result | fail closed through DGB Sentinel AI backend error hierarchy |
+| OQS mechanism discovery exception or non-iterable mechanism result | fail closed through Guardian Wallet backend error hierarchy |
 | OQS backend asked to sign or verify non-`ml-dsa` algorithm | fail closed |
-| native OQS version discovery exception | fail closed through DGB Sentinel AI backend error hierarchy |
-| native OQS sign exception on backend-invalid key material | fail closed through DGB Sentinel AI backend error hierarchy |
-| native OQS verify exception on structurally valid but backend-invalid key/signature bytes | fail closed through DGB Sentinel AI backend error hierarchy |
-| OQS verify returns truthy non-boolean result | fail closed with `verify must return bool` |
-| private key resolver exception | fail closed through DGB Sentinel AI backend error hierarchy |
+| native OQS version discovery exception | fail closed through Guardian Wallet backend error hierarchy |
+| native OQS sign exception on backend-invalid key material | fail closed through Guardian Wallet backend error hierarchy |
+| native OQS verify exception on structurally valid but backend-invalid key/signature bytes | fail closed through Guardian Wallet backend error hierarchy |
+| private key resolver exception | fail closed through Guardian Wallet backend error hierarchy |
 | extra fields in real-backend signature entry or registry key record | fail closed |
 | empty OQS message, secret key, or signature bytes | fail closed |
 | wrong-length real liboqs public key in gated proof | fail closed through component backend error hierarchy |
@@ -72,7 +71,7 @@ The goal is to prove DGB Sentinel AI can produce and verify v4 component evidenc
 ## Required CI Gate
 
 ```text
-pytest --cov=sentinel_ai_v2 --cov-report=term-missing --cov-fail-under=100 -q
+pytest --cov=dgb_wallet_guardian --cov-report=term-missing --cov-fail-under=100 -q
 ```
 
 
@@ -105,6 +104,6 @@ The KAT is TEST-ONLY deterministic canonicalization evidence only. It does not s
 
 ## Authority Boundary
 
-Passing these tests proves only the DGB Sentinel AI v4 component-verdict contract and DGB Sentinel AI real ML-DSA adapter boundary.
+Passing these tests proves only the Guardian Wallet v4 component-verdict contract and Guardian Wallet real ML-DSA adapter boundary.
 
 It does not grant transaction-signing authority, broadcast authority, DigiByte consensus authority, Shield Orchestrator final receipt authority, or AdamantineOS final authority.
