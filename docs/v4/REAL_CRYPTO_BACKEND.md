@@ -27,9 +27,9 @@ The Shield Orchestrator verifies Guardian Wallet component evidence before produ
 
 Shield v4 policy `policy.v1` uses these names:
 
-- `classical-ed25519` ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ required classical signature path;
-- `ml-dsa` ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ required PQC path; ML-DSA was formerly CRYSTALS-Dilithium;
-- `fn-dsa` ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ optional evidence path based on Falcon.
+- `classical-ed25519` - required classical signature path;
+- `ml-dsa` - required PQC path; ML-DSA was formerly CRYSTALS-Dilithium;
+- `fn-dsa` - optional evidence path based on Falcon.
 
 `fn-dsa` is not ML-DSA. It must never override failure of the required `classical-ed25519` or `ml-dsa` paths.
 
@@ -168,7 +168,6 @@ Native backend exceptions are not allowed to escape as arbitrary exception types
 
 The Guardian Wallet real-backend boundary wraps failures from:
 
-- backend algorithm discovery;
 - backend algorithm discovery;
 - backend signing;
 - backend verification;
