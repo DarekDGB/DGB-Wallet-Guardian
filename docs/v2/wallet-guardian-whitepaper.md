@@ -1,193 +1,79 @@
-# 🛡 DigiByte Wallet Guardian v2 — Whitepaper  
-### Layer-4 Behavioural Withdrawal Protection in the 5-Layer Quantum Shield  
+# DigiByte Wallet Guardian v2 - Historical Whitepaper
 
-**Author:** DarekDGB  
-**Engineering:** Angel (AI Assistant)  
-**Version:** 2.0  
-**Status:** Open Specification — Accurate + Visionary  
+Author: DarekDGB
 
----
+Version: 2.0  
+Status: Historical and non-authoritative
 
-# 1. Introduction  
+## Scope
 
-As DigiByte enters the quantum era, attacks are no longer aimed only at miners or nodes.  
-The **wallet layer** has become the new battlefield.
+This document preserves the original Wallet Guardian v2 vision. Wallet
+Guardian v2 is unsupported, and this whitepaper is not the current repository
+contract, implementation specification, security proof, or testnet-readiness
+statement.
 
-DigiByte Wallet Guardian v2 provides **Layer-4** protection in the full 5-Layer Quantum Shield:
+Current behavior and authority boundaries are defined by the repository code,
+tests, `README.md`, `SECURITY.md`, `docs/v3/MANIFEST.md`, and
+`docs/v4/CONTRACT.md`.
 
-```
-Layer 1 — Sentinel AI v2 (Monitoring & Anomaly Detection)
-Layer 2 — DQSN v2 (Distributed Global Confirmation)
-Layer 3 — ADN v2 (Autonomous Defense Node)
-Layer 4 — Wallet Guardian v2 (Behavioural Withdrawal Firewall)
-Layer 5 — Quantum Wallet Guard v1 (Quantum-Style Attack Pattern Analysis)
-Adaptive Core — Immune System (Future)
-```
+## Historical vision
 
-Wallet Guardian v2 protects users from behavioural risks, withdrawal abuse,  
-and elevated network-level danger — without touching private keys or consensus rules.
+The v2 proposal described a behavioral protection layer that would examine
+wallet intent and surrounding risk signals before a wallet decided whether to
+continue. The proposal explored:
 
----
+- unusually large transfers;
+- unfamiliar destinations;
+- rapid repeated activity;
+- abnormal fees;
+- device or session anomalies; and
+- upstream risk signals.
 
-# 2. What Wallet Guardian v2 *Is*  
+The early `ALLOW`, `DELAY`, `FREEZE`, and `REJECT` vocabulary was conceptual.
+It is not the current `GuardianDecision` model or a guaranteed state machine.
 
-Wallet Guardian v2 is a **behavioural firewall** for DigiByte wallets.
+## Current repository boundary
 
-It evaluates every withdrawal request  
-and decides whether it should be:
+The retained reference implementation evaluates `WalletContext` and
+`TransactionContext` through `GuardianEngine.evaluate_transaction`. It returns
+risk evidence with `NORMAL`, `ELEVATED`, `HIGH`, or `CRITICAL` classification,
+recommended actions, and reasons.
 
-```
-ALLOW
-DELAY
-FREEZE
-REJECT
-```
+The v3 contract provides deterministic `allow`, `escalate`, or `deny` verdict
+evidence. The v4 contract adds cryptographically verifiable component evidence.
+Neither contract executes a wallet action.
 
----
+The old GW-SIM-001 material is retained only as historical threat analysis. Its
+legacy pseudo-script is not a supported executable, current test, testnet
+integration, or proof of an implemented cooldown, daily-limit, or persistent
+freeze workflow.
 
-# 3. What Wallet Guardian v2 *Is Not*  
+## Cryptography and authority
 
-- Not a wallet  
-- Not a key manager  
-- Not a signing engine  
-- Not a UI or app  
-- Not multi-sig  
-- Not an antivirus  
-- Not consensus-level security  
+Wallet Guardian Shield v4 cryptographic backends may sign Guardian component
+evidence. They do not sign DigiByte transactions and do not handle wallet
+private keys.
 
-Wallet Guardian v2 never handles private keys and never signs transactions.
+Wallet Guardian does not:
 
----
+- broadcast transactions;
+- change DigiByte consensus;
+- approve final execution;
+- replace the Shield Orchestrator;
+- override a failed required Shield signature; or
+- grant AdamantineOS authority.
 
-# 4. Problems Wallet Guardian v2 Solves  
+Required `classical-ed25519` and `ml-dsa` evidence remains strict AND.
+Optional draft FN-DSA/Falcon-1024 evidence cannot replace or rescue either
+required path. AdamantineOS remains the final fail-closed policy and execution
+boundary.
 
-### 4.1 Withdrawal Pattern Abuse  
-Stops malicious attempts such as:  
-- draining a wallet after compromise  
-- repeated withdrawals in a short window  
-- automated bot-like behaviour  
+## Future work
 
-### 4.2 Risk-Aware Defence  
-Wallet Guardian adapts dynamically to ADN v2 risk:
+Device analysis, address-similarity checks, automated behavior detection, and
+wallet or testnet integration remain separate future work unless current code,
+tests, and release evidence explicitly establish them.
 
-```
-LOW     → standard  
-MEDIUM  → stricter  
-HIGH    → freeze  
-CRITICAL→ reject all
-```
+## License
 
-### 4.3 Human Error Prevention  
-Stops accidental or dangerous behaviour.
-
-### 4.4 Early Quantum-Assisted Attack Detection  
-If ADN reports instability or quantum-like anomalies,  
-Wallet Guardian v2 tightens all rules instantly.
-
----
-
-# 5. Core Functions  
-
-### Behaviour-Based Defence  
-Evaluates each withdrawal by amount, frequency, cooldown, and 24h volume.
-
-### Policy Engine  
-Configurable rules for safe behaviour.
-
-### Decision Model  
-
-```
-ALLOW   — normal  
-DELAY   — suspicious timing  
-FREEZE  — major anomaly or risk  
-REJECT  — dangerous / persistent
-```
-
-### Integration with ADN v2  
-Real-time risk state affects decisions.
-
-### Adaptive Core Export  
-Sends high-value events for learning.
-
----
-
-# 6. Architecture Overview  
-
-```
-src/dgb_wallet_guardian/
-    guardian_engine.py
-    policies.py
-    decisions.py
-    models.py
-    config.py
-    client.py
-    adaptive_bridge.py
-```
-
----
-
-# 7. Simulation Support  
-
-Included:
-
-```
-simulate_guardian_wallet_scenario_1.py
-```
-
-Produces logs in:
-
-```
-logs/guardian_wallet_scenario_1.log
-```
-
----
-
-# 8. Attack Scenario GW-SIM-001  
-
-Documented in:
-
-```
-docs/guardian_wallet_attack_scenario_1.md
-```
-
-Flow:  
-- ALLOW → DELAY → FREEZE → REJECT  
-- dynamic ADN risk  
-- Adaptive Core export
-
----
-
-# 9. Testnet Role  
-
-When DigiByte begins quantum-era testing, Wallet Guardian v2 will run with:  
-Sentinel → DQSN → ADN → Wallet Guardian → QWG → Adaptive Core
-
-Provides:  
-- behavioural defence  
-- policy enforcement  
-- risk-based withdrawal logic  
-- export of patterns for global learning
-
----
-
-# 10. Vision — Future Extensions (Phase II)  
-
-Not part of v2, but future optional modules:
-
-- device signing-rhythm analysis  
-- look-alike address detection  
-- low-entropy signature alerts  
-- bot/automation behaviour detection  
-
----
-
-# 11. License  
-
-MIT License — Open Source  
-
----
-
-# 12. Author  
-
-🛡 **DarekDGB**  
-Creator of the DigiByte 5-Layer Quantum Shield  
+MIT License.
