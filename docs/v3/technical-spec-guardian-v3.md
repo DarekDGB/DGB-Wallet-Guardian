@@ -1,220 +1,56 @@
-# Guardian Wallet — Technical Specification v3
+# Guardian Wallet v3 - Superseded Technical Specification
 
-> **Author:** DarekDGB  
-> **Status:** Authoritative (v3)  
-> **Scope:** Guardian Wallet Layer (Shield Layer 4)  
-> **License:** MIT  
+Author: DarekDGB
 
----
+Status: Historical and non-authoritative
 
-## 1. Purpose & Scope
+## Supersession notice
 
-This document defines the **authoritative technical specification** for **Guardian Wallet v3**.
+This file preserves the location of an early Guardian Wallet v3 draft. Its
+former request shape, response vocabulary, integration map, and execution
+authority wording no longer define the repository contract.
 
-Guardian Wallet v3 is a **user-side protection layer** responsible for:
-- enforcing wallet-level security policies
-- mediating execution requests (send, sign, mint, burn)
-- failing closed under all ambiguity
-- producing deterministic, auditable decisions
+Use these current sources instead:
 
-This specification supersedes all previous (v1/v2) Guardian documentation.
+- `README.md` for the supported v3.2.0 overview;
+- `SECURITY.md` for the fail-closed and authority boundary;
+- `docs/v3/GUARDIAN_V3.md` for the current v3 request and verdict contract;
+- `docs/v3/MANIFEST.md` for the v3.2.0 identity and registry lock;
+- `docs/v3/RELEASE_STATUS_v3.2.0.md` for release status; and
+- `docs/v4/CONTRACT.md` for Shield v4 component evidence.
 
----
+If this historical notice conflicts with current code, tests, or the listed
+documents, the current sources control.
 
-## 2. Core Design Principles (Non-Negotiable)
+## Correct authority boundary
 
-| Principle | Description |
-|---------|-------------|
-| Fail-Closed | Any invalid, unknown, or malformed input results in `ERROR` |
-| Determinism | Same input → same output (byte-for-byte) |
-| No Hidden Authority | Guardian cannot silently allow execution |
-| Glass-Box | Every decision is explainable and testable |
-| Policy-Driven | No hardcoded wallet logic outside policy |
-| Zero Trust | No upstream signal is trusted implicitly |
+Guardian Wallet evaluates wallet intent and verified authentication context. It
+returns deterministic, fail-closed risk or component verdict evidence.
 
----
+Guardian output is not authoritative for user execution. Guardian Wallet does
+not:
 
-## 3. Contract Envelope (v3)
+- sign or broadcast DigiByte transactions;
+- hold, derive, or access wallet private keys;
+- execute wallet actions;
+- change DigiByte consensus;
+- create a Shield Orchestrator receipt;
+- override Shield verification; or
+- approve AdamantineOS execution.
 
-### Request (Logical)
+Shield v4 cryptographic adapters sign Guardian component evidence only. That
+must not be described as transaction signing or wallet-key custody.
 
-```json
-{
-  "contract_version": 3,
-  "component": "guardian_wallet",
-  "request_id": "string",
-  "intent": { "...": "execution intent" },
-  "risk_context": { "...": "QWG signals" }
-}
-```
+The Shield Orchestrator consumes component evidence and produces the Shield
+receipt. AdamantineOS independently verifies that evidence and remains the final
+fail-closed policy and execution boundary.
 
-### Response (Authoritative)
+## Historical status
 
-```json
-{
-  "contract_version": 3,
-  "component": "guardian_wallet",
-  "request_id": "string",
-  "context_hash": "sha256",
-  "decision": "ALLOW | WARN | BLOCK | ERROR",
-  "reason_codes": ["GW_*"],
-  "meta": {
-    "fail_closed": true,
-    "latency_ms": 0
-  }
-}
-```
+The former draft used stale `intent` and `risk_context` request fields and
+`ALLOW`, `WARN`, `BLOCK`, and `ERROR` response labels. Those shapes are not the
+current v3 contract and must not be implemented from this file.
 
----
-
-## 4. Strict Parsing Rules
-
-Guardian Wallet v3 MUST:
-
-- Reject unknown top-level keys
-- Reject missing required fields
-- Reject wrong types
-- Reject NaN / Infinity values
-- Reject oversized payloads
-- Reject invalid enums
-
-Parsing errors MUST return:
-
-```json
-"decision": "ERROR"
-```
-
----
-
-## 5. Determinism Guarantees
-
-Guardian Wallet v3 MUST NOT:
-
-- read system time
-- read randomness
-- perform network I/O
-- depend on execution order
-- mutate shared/global state
-
-### Context Hash
-
-The `context_hash` is computed over:
-- canonicalized request
-- canonicalized policy snapshot
-- canonicalized decision result
-
-Using:
-- sorted keys
-- fixed encoding (UTF-8)
-- SHA-256 only
-
----
-
-## 6. Decision Semantics
-
-| Decision | Meaning |
-|--------|--------|
-| ALLOW | Safe to execute immediately |
-| WARN | User warning + cooldown |
-| BLOCK | Explicitly forbidden |
-| ERROR | Contract or input violation |
-
-Guardian Wallet v3 MUST:
-- never downgrade a higher-risk decision
-- never auto-escalate to ALLOW
-- never bypass EQC / WSQK rules
-
----
-
-## 7. Reason Codes (Single Source of Truth)
-
-All reason codes MUST:
-- be stable strings
-- live in a single enum
-- be covered by tests
-
-Examples:
-- `GW_OK`
-- `GW_POLICY_VIOLATION`
-- `GW_INVALID_REQUEST`
-- `GW_RISK_EXCEEDED`
-- `GW_FAIL_CLOSED`
-
-No free-form reasons are allowed.
-
----
-
-## 8. Fail-Closed Invariants
-
-Guardian Wallet v3 MUST fail closed when:
-
-- contract_version ≠ 3
-- component mismatch
-- missing intent
-- malformed risk context
-- unknown keys
-- policy evaluation errors
-- internal exceptions
-
-Fail-closed behavior is **not optional**.
-
----
-
-## 9. Attack Surface & Explicit Non-Goals
-
-### Defended Against
-- malicious UI
-- compromised wallet client
-- replayed intents
-- malformed risk signals
-- downgrade attacks
-
-### Non-Goals
-- key generation
-- cryptographic signing
-- network validation
-- chain consensus
-
-Guardian Wallet **does not hold keys**.
-
----
-
-## 10. Integration Contract
-
-Guardian Wallet v3 integrates with:
-
-- **QWG v3** — risk evaluation
-- **DQSN v3** — network aggregation
-- **ADN v3** — node defense
-- **Adaptive Core v3** — learning & feedback
-- **EQC / WSQK** — execution gating
-
-Guardian Wallet decisions are **authoritative** for user execution.
-
----
-
-## 11. Test Coverage Mapping
-
-| Spec Area | Required Tests |
-|---------|----------------|
-| Parsing | unknown keys, bad types |
-| Determinism | identical input → identical output |
-| Fail-Closed | invalid input → ERROR |
-| Policy | policy limits enforced |
-| Reason Codes | exact enum matching |
-
-No spec item is considered complete without tests.
-
----
-
-## 12. Final Authority Statement
-
-If code, tests, and documentation ever disagree:
-
-> **Tests + This Specification define truth.**
-
-Anything else is a bug.
-
----
-
-**Guardian Wallet v3 is locked when all tests pass.**
+Tests and the current authoritative contract documents define present
+behavior. This file grants no execution, approval, bypass, rescue, or signing
+authority.
