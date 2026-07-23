@@ -1,369 +1,103 @@
-# 🛡 DigiByte Wallet Guardian v2 — Technical Specification  
-### Layer‑4 Behavioural Withdrawal Firewall  
-**Version:** 2.0  
-**Author:** DarekDGB  
-**Engineering:** Angel (AI Assistant)  
+# DigiByte Wallet Guardian v2 - Historical Technical Note
 
----
+Author: DarekDGB
 
-# 1. Purpose of This Document  
-This technical specification describes **exactly how Wallet Guardian v2 works**,  
-matching the real code structure in your repository:
+Version: 2.0  
+Status: Historical and non-authoritative
 
-```
-src/dgb_wallet_guardian/
-docs/
-tests/
-simulate_guardian_wallet_scenario_1.py
-```
+## Purpose
 
-It is written for DigiByte Core developers, security researchers, and testnet operators.
+This document preserves the design intent of the unsupported Wallet Guardian
+v2 line. It is not the current implementation contract, test evidence, or a
+testnet-readiness claim.
 
----
+The current supported contract and authority boundary are documented in:
 
-# 2. High-Level Function  
+- `README.md`;
+- `SECURITY.md`;
+- `docs/v3/GUARDIAN_V3.md`;
+- `docs/v3/MANIFEST.md`;
+- `docs/v3/RELEASE_STATUS_v3.2.0.md`; and
+- `docs/v4/CONTRACT.md`.
 
-Wallet Guardian v2 is a **policy-driven, risk-aware withdrawal decision engine**.
+If this historical note conflicts with current code, tests, or those documents,
+the current sources control.
 
-It takes in:
+## Historical concept
 
-- wallet ID  
-- withdrawal amount  
-- timestamp  
-- ADN risk level  
+The v2 concept treated Wallet Guardian as a transparent behavioral-risk layer
+for outgoing wallet intent. Its proposed signals included transaction amount,
+destination history, transaction frequency, fees, device context, and upstream
+risk indicators. Its goal was to produce explainable risk evidence and
+recommended protective actions without changing DigiByte consensus.
 
-And outputs one of:
+The historical labels `ALLOW`, `DELAY`, `FREEZE`, and `REJECT` describe that
+early concept. They are not the current `GuardianDecision` or Shield v3/v4
+wire contract.
 
-```
-ALLOW
-DELAY
-FREEZE
-REJECT
-```
+## Current implementation reference
 
-This engine **never touches private keys**, **never signs**, and **never broadcasts** transactions.
+The retained reference engine currently exposes:
 
-It is completely external and safe for testnet integration.
-
----
-
-# 3. Data Flow Overview  
-
-```
-Wallet → Guardian Client → GuardianEngine
-        ↓ policies.py
-        ↓ decisions.py
-        ↓ models.py
-ADN risk feed → GuardianEngine
-Adaptive Core ← adaptive_bridge
+```text
+GuardianEngine.evaluate_transaction(
+    wallet_ctx: WalletContext,
+    tx_ctx: TransactionContext,
+    extra_signals: dict | None,
+) -> GuardianDecision
 ```
 
-Sequence:
-
-1. Wallet component sends withdrawal request to Guardian.  
-2. GuardianEngine loads config values.  
-3. GuardianEngine loads withdrawal history for the wallet.  
-4. GuardianEngine evaluates policies.  
-5. Risk state from **ADN v2** modifies the strictness.  
-6. Decision is returned.  
-7. High‑risk events go to Adaptive Core.
-
----
-
-# 4. Code Structure (Accurate to Repository)
-
-```
-src/dgb_wallet_guardian/
-│
-├── __init__.py
-├── adaptive_bridge.py
-├── client.py
-├── config.py
-├── decisions.py
-├── guardian_engine.py
-├── models.py
-└── policies.py
-```
-
----
-
-# 5. Module-by-Module Specification  
-
-## 5.1 `models.py`
-Defines core structured models:
-
-- `WithdrawalEvent`
-- `PolicyResult`
-- `Decision`
-- Historical buckets / time windows
-
-Example fields:
-
-```
-wallet_id: str
-amount_dgb: float
-timestamp: datetime
-```
-
----
-
-## 5.2 `decisions.py`
-
-Defines:
-
-```
-DecisionType:
-    ALLOW
-    DELAY
-    FREEZE
-    REJECT
-```
-
-A Decision object includes:
-
-```
-decision_type
-reason
-metadata (optional)
-```
-
-Purpose:  
-Standardise decisions across all tests, simulations, and future integrations.
-
----
-
-## 5.3 `policies.py`
-
-Implements **behaviour rules**:
-
-### • Amount-based policy  
-Reject or freeze if amounts exceed thresholds.
-
-### • Daily volume policy  
-Tracks rolling 24h volume across multiple requests.
-
-### • Cooldown policy  
-Minimum minutes between withdrawals.
-
-### • Escalation under MEDIUM/HIGH ADN risk  
-Policies become stricter automatically.
-
-Output structure:
-
-```
-PolicyResult:
-    allowed: bool
-    delay: bool
-    freeze: bool
-    reason: str
-```
-
----
-
-## 5.4 `config.py`
-
-Provides configuration values:
-
-```
-MAX_WITHDRAWAL_PER_TX
-MAX_WITHDRAWAL_24H
-COOLDOWN_MINUTES
-RULES_FOR_MEDIUM
-RULES_FOR_HIGH
-```
-
-Developers can tune these for testnet.
-
----
-
-## 5.5 `guardian_engine.py` (Core Brain)
-
-Responsible for:
-
-- loading history  
-- evaluating all policies  
-- combining results  
-- applying risk‑based multipliers  
-- generating final Decision object  
-- exporting high-risk events to Adaptive Core  
-
-Critical functions normally include:
-
-```
-evaluate_withdrawal(...)
-load_wallet_history(...)
-combine_policy_results(...)
-export_to_adaptive(...)
-```
-
-### Decision Logic (Simplified):
-
-```
-If ADN risk == HIGH:
-    freeze or reject suspicious withdrawals
-
-If cooldown violated:
-    DELAY
-
-If daily volume exceeded:
-    FREEZE
-
-If wallet frozen and attempts continue:
-    REJECT
-
-Else:
-    ALLOW
-```
-
----
-
-## 5.6 `client.py`
-
-Thin wrapper for wallets:
-
-- prepares WithdrawalEvent  
-- passes it to GuardianEngine  
-- receives decision  
-
-Allows any wallet implementation to integrate Guardian instantly.
-
----
-
-## 5.7 `adaptive_bridge.py`
-
-Exports structured events:
-
-```
-WALLET_FROZEN
-PERSISTENT_ATTEMPTS
-ABNORMAL_PATTERN
-```
-
-These are consumed by the **Adaptive Core (immune system)** during learning.
-
----
-
-# 6. Test Structure  
-
-```
-tests/
-│
-├── test_imports.py
-├── test_decisions.py
-├── test_models.py
-├── test_policies.py
-└── test_smoke.py
-```
-
-### Purpose of Each:
-
-- **test_imports.py**  
-  Ensures all modules import correctly.
-
-- **test_decisions.py**  
-  Validates Decision object behaviour.
-
-- **test_models.py**  
-  Validates the data structures.
-
-- **test_policies.py**  
-  Ensures each policy triggers correctly.
-
-- **test_smoke.py**  
-  Runs a minimal GuardianEngine instantiation.
-
----
-
-# 7. Simulation Script  
-
-Included in repo:
-
-```
-simulate_guardian_wallet_scenario_1.py
-```
-
-Runs the official GW‑SIM‑001 sequence:
-
-```
-ALLOW
-DELAY
-FREEZE
-REJECT
-```
-
-Produces logs in:
-
-```
-logs/guardian_wallet_scenario_1.log
-```
-
-This allows developers to verify behaviour without real wallets.
-
----
-
-# 8. Official Attack Scenario GW‑SIM‑001  
-
-Documented in:
-
-```
-docs/guardian_wallet_attack_scenario_1.md
-```
-
-Simulates:
-
-- multiple sequential withdrawals  
-- cooldown breaches  
-- 24h volume spike  
-- rising ADN risk (LOW → MEDIUM → HIGH)  
-- final freeze + reject sequence  
-
-This is used during DigiByte testnet evaluation.
-
----
-
-# 9. Integration With Other Layers  
-
-Wallet Guardian v2 expects two external signals:
-
-### 9.1 From ADN v2  
-Real‑time risk levels:
-
-```
-LOW
-MEDIUM
+`GuardianDecision` contains a `RiskLevel`, score, recommended actions, and
+reasons. Current risk levels are:
+
+```text
+NORMAL
+ELEVATED
 HIGH
 CRITICAL
 ```
 
-### 9.2 To Adaptive Core  
-Exports behavioural fingerprints for immune system learning.
+`WalletGuardian` provides a dictionary-based adapter for this engine.
+`adaptive_bridge.py` can emit best-effort advisory telemetry to a caller-supplied
+sink. Sink failure is swallowed and cannot change the Guardian decision.
 
----
+The repository does not implement the old `WithdrawalEvent`, `PolicyResult`,
+`evaluate_withdrawal`, persistent wallet-freeze state, cooldown/daily-volume
+scenario, or root-level runnable simulation described by earlier versions of
+this note.
 
-# 10. Security Guarantees  
+The file
+`docs/v2/legacy/simulate_guardian_wallet_scenario_1.py` is retained as a
+non-runnable historical reference. It is not a supported executable, test, or
+proof artifact.
 
-Wallet Guardian v2 provides:
+## Authority boundary
 
-- deterministic decisions  
-- transparent logic  
-- no key exposure  
-- no blockchain modification  
-- safe testnet integration  
-- immutable behaviour once parameters are set  
+Wallet Guardian evaluates risk and produces evidence. It does not:
 
-Guardian logic is **pure Python**, safe, sandboxed, and side‑effect limited.
+- sign or broadcast DigiByte transactions;
+- hold, derive, or access wallet private keys;
+- modify DigiByte consensus;
+- execute wallet actions;
+- issue a Shield Orchestrator receipt;
+- override Shield verification; or
+- grant AdamantineOS final policy or execution authority.
 
----
+Shield v4 cryptographic adapters sign and verify Guardian component evidence
+only. Evidence signing must not be confused with transaction signing or wallet
+key custody.
 
-# 11. License  
+Any caller that consumes Guardian risk output remains responsible for its own
+policy and execution checks. AdamantineOS remains the final fail-closed policy
+and execution boundary for Shield evidence.
 
-This specification and implementation are open-source under **MIT License**.
+## Historical scenario status
 
----
+The conceptual GW-SIM-001 sequence remains documented in
+`docs/v2/guardian_wallet_attack_scenario_1.md`. It is threat-analysis material,
+not proof that the current engine implements that state machine or has been
+integrated with a DigiByte wallet or testnet.
 
-# 12. Author  
+## License
 
-🛡 **DarekDGB**  
-Creator of the DigiByte 5‑Layer Quantum Shield  
-Visionary & Community Builder
-
+MIT License.
