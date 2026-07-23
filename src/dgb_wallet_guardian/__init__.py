@@ -6,11 +6,11 @@ Guardian Wallet evaluates:
 - Q-ID authentication facts (`mode="qid_auth"`)
 
 It is deterministic, fail-closed, and non-executing.
-Guardian never signs, never broadcasts, and never touches keys.
+Guardian never signs or broadcasts DigiByte transactions and never holds wallet keys.
 """
 
 from .client import WalletGuardian
 from .v3 import GuardianWalletV3
 
 __all__ = ["WalletGuardian", "GuardianWalletV3"]
-__version__ = "3.1.0"
+__version__ = "3.2.0"
