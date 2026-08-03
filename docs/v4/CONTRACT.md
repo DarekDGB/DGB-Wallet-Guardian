@@ -126,6 +126,27 @@ Rules:
 
 All signatures in one bundle bind to the same `signed_payload_hash`. The verifier-required policy wins over embedded evidence.
 
+### Canonical Signature-Bundle Order
+
+Guardian Wallet producers must emit signature entries in this exact `policy.v1`
+order:
+
+```text
+classical-ed25519
+ml-dsa
+fn-dsa, when present
+```
+
+The bundle builder canonicalizes supported input entries into that sequence
+without mutating or aliasing the caller's list. A verifier must not repair,
+sort, or otherwise normalize a received bundle. Reversed or interleaved
+algorithm sequences are malformed and must fail before trust-registry lookup or
+cryptographic verification.
+
+This ordering rule does not change strict required-signature AND semantics.
+FN-DSA remains optional-last evidence only. It cannot replace or rescue either
+required algorithm.
+
 ## Real ML-DSA Backend Path
 
 Guardian Wallet V4.8F-A introduces an optional real backend adapter for the required `ml-dsa` path:
@@ -205,6 +226,7 @@ A verifier must reject:
 - FN-DSA present but invalid, duplicated, wrong-role, wrong-domain, wrong-hash, or missing from the trust profile
 - extra fields in real-backend signature entries or registry key records
 - deterministic TEST-ONLY material at the real backend boundary
+- reversed or interleaved signature algorithms
 
 ## V4.8H-E Live Falcon-1024 Backend Extension
 
