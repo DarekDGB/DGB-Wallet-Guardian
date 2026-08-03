@@ -24,6 +24,7 @@ The goal is to prove Guardian Wallet can produce and verify v4 component evidenc
 | shared frozen component-verdict KAT vector | canonical JSON, domain-separated bytes, and signed payload hash match the shared V4.8G-R4 fixture |
 | FN-DSA signed-message KAT | `fn-dsa`, `fips206-draft-falcon1024-v1`, and component domain bytes match fixture |
 | valid optional FN-DSA evidence with required signatures | accepted and recorded as optional evidence |
+| producer receives reversed or interleaved supported entries | emits `classical-ed25519`, `ml-dsa`, then optional `fn-dsa` without mutating or aliasing caller input |
 
 ## Negative Tests
 
@@ -78,6 +79,8 @@ The goal is to prove Guardian Wallet can produce and verify v4 component evidenc
 | duplicate FN-DSA entry | fail closed |
 | unsupported FN-DSA `standard_profile` | fail closed |
 | FN-DSA `standard_profile` flipped after signing | fail closed |
+| reversed required signature order | fail closed before trust lookup or cryptographic verification |
+| interleaved or optional-first three-entry order | fail closed before trust lookup or cryptographic verification |
 
 ## Required CI Gate
 
