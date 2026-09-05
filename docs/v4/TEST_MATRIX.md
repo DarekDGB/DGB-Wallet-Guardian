@@ -1,167 +1,69 @@
-# Guardian Wallet Shield v4 Test Matrix
+# Wallet Guardian Shield v4 Test Matrix
 
+Status: V4.10-E2 controlled release-candidate evidence
 Author attribution: DarekDGB
 
-## Scope
-
-This matrix covers the Guardian Wallet Shield v4 component-verdict contract, the V4.8F-A real ML-DSA backend path, and the V4.8H-C FN-DSA optional-evidence path.
-
-The goal is to prove Guardian Wallet can produce and verify v4 component evidence while keeping TEST-ONLY deterministic signatures separate from real backend mode.
-
-## Positive Tests
-
-| Test | Expected result |
-|---|---|
-| build unsigned Guardian Wallet v4 payload | deterministic payload with `contract_version: 4` |
-| add required classical + ML-DSA test signatures | signed envelope validates under TEST-ONLY verifier |
-| validate with matching context hash | verification summary returned |
-| verify required role | `shield_component_guardian_wallet` only |
-| build real crypto signature input | frozen Guardian Wallet component domain bytes with authenticated `standard_profile` |
-| build real ML-DSA signature entry through backend adapter | `b64u:` signature entry produced |
-| verify real ML-DSA signature entry through backend adapter | verification returns true |
-| lazy OQS fake backend exposes version | backend metadata includes locked mechanism |
-| optional gated real-liboqs ML-DSA proof workflow | runs only with `SHIELD_V4_REAL_OQS=1` and JUnit not-skipped guard |
-| shared frozen component-verdict KAT vector | canonical JSON, domain-separated bytes, and signed payload hash match the shared V4.8G-R4 fixture |
-| FN-DSA signed-message KAT | `fn-dsa`, `fips206-draft-falcon1024-v1`, and component domain bytes match fixture |
-| valid optional FN-DSA evidence with required signatures | accepted and recorded as optional evidence |
-| producer receives reversed or interleaved supported entries | emits `classical-ed25519`, `ml-dsa`, then optional `fn-dsa` without mutating or aliasing caller input |
-
-## Negative Tests
-
-| Test | Expected result |
-|---|---|
-| tampered signature | fail closed |
-| changed context hash after signing | fail closed |
-| missing ML-DSA required signature | fail closed |
-| duplicate algorithm entry | fail closed |
-| unsupported algorithm | fail closed |
-| wrong domain tag | fail closed |
-| wrong signed payload hash | fail closed |
-| revoked key | fail closed |
-| artifact outside key validity window | fail closed |
-| forbidden authority metadata | fail closed |
-| null in signed payload | fail closed |
-| float in signed payload | fail closed |
-| KAT payload mutated with null or float | fail closed before signing |
-| duplicate JSON key while parsing | fail closed |
-| real backend missing required algorithm support | fail closed |
-| real backend algorithm discovery exception | fail closed through Guardian Wallet backend error hierarchy |
-| real backend sign exception | fail closed through Guardian Wallet backend error hierarchy |
-| real backend verify exception | fail closed through Guardian Wallet backend error hierarchy |
-| real backend verify returns non-boolean result | fail closed |
-| real backend receives TEST-ONLY key id or public key | fail closed |
-| real backend receives TEST-ONLY private key reference | fail closed |
-| real backend emits malformed non-`b64u:` signature | fail closed |
-| malformed real `b64u:` public key | fail closed |
-| malformed real `b64u:` signature | fail closed |
-| surrounding whitespace in real backend fields | fail closed |
-| empty decoded real binary material | fail closed |
-| OQS import missing when backend selected | fail closed |
-| OQS import raises native exception | fail closed through Guardian Wallet backend error hierarchy |
-| OQS `ML-DSA-65` mechanism disabled | fail closed |
-| wrong OQS mechanism requested | fail closed |
-| OQS mechanism discovery exception or non-iterable mechanism result | fail closed through Guardian Wallet backend error hierarchy |
-| OQS backend asked to sign or verify non-`ml-dsa` algorithm | fail closed |
-| native OQS version discovery exception | fail closed through Guardian Wallet backend error hierarchy |
-| native OQS sign exception on backend-invalid key material | fail closed through Guardian Wallet backend error hierarchy |
-| native OQS verify exception on structurally valid but backend-invalid key/signature bytes | fail closed through Guardian Wallet backend error hierarchy |
-| private key resolver exception | fail closed through Guardian Wallet backend error hierarchy |
-| extra fields in real-backend signature entry or registry key record | fail closed |
-| empty OQS message, secret key, or signature bytes | fail closed |
-| wrong-length real liboqs public key in gated proof | fail closed through component backend error hierarchy |
-| gated real-liboqs proof skips in dedicated job | rejected by JUnit not-skipped guard |
-| FN-DSA present but invalid | fail closed |
-| FN-DSA valid cannot rescue invalid ML-DSA | fail closed |
-| FN-DSA valid cannot rescue invalid classical signature | fail closed |
-| FN-DSA valid cannot replace missing ML-DSA | fail closed |
-| FN-DSA wrong role or missing trust-profile key | fail closed |
-| FN-DSA wrong payload hash or wrong domain | fail closed |
-| duplicate FN-DSA entry | fail closed |
-| unsupported FN-DSA `standard_profile` | fail closed |
-| FN-DSA `standard_profile` flipped after signing | fail closed |
-| reversed required signature order | fail closed before trust lookup or cryptographic verification |
-| interleaved or optional-first three-entry order | fail closed before trust lookup or cryptographic verification |
-
-## Required CI Gate
+## Standard gate
 
 ```text
 pytest --cov=dgb_wallet_guardian --cov-report=term-missing --cov-fail-under=100 -q
 ```
 
+The standard gate proves deterministic contracts, KATs, negative paths, and
+100 percent Wallet Guardian statement coverage. The two native-OQS nodes are
+approved local skips and must execute with zero skips in the dedicated
+workflow.
 
-## Optional Real-OQS Proof Gate
+The policy order is `classical-ed25519`, `ml-dsa`, then optional `fn-dsa`
+under `fips206-draft-falcon1024-v1`. Optional FN-DSA cannot replace or rescue
+either required path and is not final FIPS 206 proof.
 
-Default CI does not require liboqs. The live liboqs proof is a separate gated job:
+## Contract and policy mapping
 
-```text
-SHIELD_V4_REAL_OQS=1 python -m pytest --override-ini addopts='' tests/test_v48g_real_oqs_mldsa_backend.py -q --junitxml=shield-v4-real-oqs-results.xml
-python scripts/assert_real_oqs_junit_not_skipped.py shield-v4-real-oqs-results.xml
-```
+| Property | Primary evidence |
+|---|---|
+| Frozen v4 identities | `tests/test_v4_crypto_verdict_contract.py::test_guardian_wallet_v4_signed_component_verdict_contract_validates` |
+| Required classical and ML-DSA paths | `tests/test_v4_missing_signature_fail_closed.py` |
+| Optional FN-DSA absent or valid | `tests/test_v48h_fn_dsa_optional_evidence.py::test_v48h_guardian_wallet_fn_dsa_absent_allowed_and_valid_optional_evidence_recorded` |
+| Optional FN-DSA cannot rescue | `tests/test_v48h_fn_dsa_optional_evidence.py::test_v48h_guardian_wallet_valid_fn_dsa_cannot_rescue_required_failure` |
+| Canonical producer order | `tests/test_v48h_fn_dsa_optional_evidence.py::test_v49i2_guardian_wallet_bundle_builder_emits_canonical_order_without_mutating_input` |
+| Noncanonical received order fails pre-crypto | `tests/test_v48h_fn_dsa_optional_evidence.py::test_v49i2_guardian_wallet_verifier_rejects_noncanonical_order_before_key_lookup_or_crypto` |
+| Wallet Guardian role and trust separation | `tests/test_v4_crypto_verdict_contract.py` |
+| Shared component KAT | `tests/test_v4_component_kat_vectors.py::test_v48g_r4_component_kat_vector_freezes_canonical_bytes_and_hash` |
+| FN-DSA signed-message KAT | `tests/test_v48h_fn_dsa_signed_message_kat.py` |
+| Real-backend fail-closed contract | `tests/test_v4_real_crypto_backend_contract.py` |
+| ML-DSA provider contract | `tests/test_v4_oqs_mldsa_backend.py` |
+| Falcon-1024 provider contract | `tests/test_v48h_e_oqs_falcon_backend.py` |
+| Repository encoding and attribution | `tests/test_v49i2_repository_hygiene_lock.py` |
+| Candidate release-pack truth | `tests/test_v410e2_release_pack_lock.py` |
 
-The guard must prove at least one testcase ran and that `skipped == 0`, `failures == 0`, and `errors == 0` before the run can support a live-liboqs claim.
+## Negative matrix
 
-## V4.8G-R4 Audit Cleanup Checks
+The committed suite rejects missing required signatures, tampering, changed
+context or payload hash, duplicate or unknown algorithms, reversed or
+interleaved bundle order, wrong role, missing or revoked keys, invalid validity
+windows, unsupported profiles, malformed canonical payloads, malformed
+`b64u:` material, TEST-ONLY material at the real boundary, native provider
+exceptions, non-boolean verification results, and optional-evidence rescue
+attempts.
 
-The component test suite now includes a shared frozen component-verdict KAT fixture:
+## Dedicated real-OQS gate
 
-```text
-tests/fixtures/v4/component_verdict_policy_v1_kat.json
-```
-
-Every component repo must reproduce this signed payload hash exactly:
-
-```text
-a3881f27444ce73de875a15c8b413785a4fec4f4c03baaa6f8ee2fbf839736ae
-```
-
-The KAT is TEST-ONLY deterministic canonicalization evidence only. It does not sign transactions, broadcast, change DigiByte consensus, or claim live liboqs execution.
-
-## V4.8H-C FN-DSA Optional Evidence Checks
-
-The component test suite now includes:
-
-```text
-tests/test_v48h_fn_dsa_optional_evidence.py
-tests/test_v48h_fn_dsa_signed_message_kat.py
-tests/fixtures/v4/fn_dsa_signed_message_draft_profile_kat.json
-```
-
-These tests prove:
-
-- FN-DSA absent + required signatures valid -> ACCEPT;
-- FN-DSA valid + required signatures valid -> ACCEPT with optional evidence recorded;
-- FN-DSA valid + ML-DSA invalid -> DENY;
-- FN-DSA valid + classical invalid -> DENY;
-- FN-DSA valid but ML-DSA missing -> DENY;
-- FN-DSA invalid while present -> DENY;
-- FN-DSA wrong payload hash or wrong domain -> DENY;
-- FN-DSA wrong role or missing trust-profile key -> DENY;
-- duplicate FN-DSA entries -> DENY;
-- unsupported FN-DSA `standard_profile` -> DENY;
-- `standard_profile` flipped after signing -> DENY.
-
-## V4.8H-E Full Hybrid and Live-Falcon Checks
-
-V4.8H-E adds these checks:
+The workflow `.github/workflows/shield-v4-real-oqs.yml` runs exactly:
 
 ```text
-tests/test_v48h_e_oqs_falcon_backend.py
-tests/test_v48h_e_real_oqs_falcon_backend.py
+tests/test_v48g_real_oqs_mldsa_backend.py::test_v48g_real_oqs_mldsa65_guardian_backend_round_trip_and_negatives
+tests/test_v48h_e_real_oqs_falcon_backend.py::test_v48h_e_real_oqs_falcon1024_backend_round_trip_and_negatives
 ```
 
-The deterministic backend-contract test proves Falcon-1024 adapter wiring, `b64u:` binary material parsing, wrong-algorithm denial, disabled-mechanism denial, native exception fail-closed handling, and `standard_profile` binding.
+The current command executes the two named nodes. Its JUnit guard requires at
+least two tests, both required testcase identities, skipped=0, failures=0, and
+errors=0. Standard CI is not a substitute for this native proof, and the native
+proof is not a claim about production keys, an HSM, transaction signing, or
+final FIPS 206 conformance.
 
-The real-liboqs test is gated and must be run only by the dedicated PQC workflow with:
+## Authority boundary
 
-```text
-SHIELD_V4_REAL_OQS=1
-SHIELD_V4_REAL_OQS_FALCON=1
-```
-
-A live Falcon-1024 claim requires the dedicated PQC workflow JUnit guard to report `skipped == 0`, `failures == 0`, and `errors == 0`. FN-DSA remains optional evidence and is not final FIPS 206 proof.
-
-## Authority Boundary
-
-Passing these tests proves only the Guardian Wallet v4 component-verdict contract and Guardian Wallet real ML-DSA adapter boundary.
-
-It does not grant transaction-signing authority, broadcast authority, DigiByte consensus authority, Shield Orchestrator final receipt authority, or AdamantineOS final authority.
+Passing these tests proves Wallet Guardian component evidence behavior only.
+It grants no transaction-signing, broadcast, consensus, custody,
+Orchestrator-receipt, or AdamantineOS final authority.
