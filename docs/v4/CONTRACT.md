@@ -1,32 +1,25 @@
-# Guardian Wallet Shield v4 Component Verdict Contract
+# Wallet Guardian Shield v4 Component Verdict Contract
 
+Status: controlled `4.0.0` release candidate; not released or tagged
 Author attribution: DarekDGB
 
-## Status
+## Scope
 
-This document defines the Guardian Wallet Shield v4 component-verdict contract.
+This document defines the Wallet Guardian Shield v4 component-verdict
+contract. It is parallel to the frozen v3 compatibility surface. The
+distribution-version bump changes no protocol or schema identity.
 
-This is a parallel v4 contract. It does not modify or replace the audited v3.2 Guardian Wallet deterministic contract.
+## Authority boundary
 
-V4.8F-A adds a real ML-DSA backend adapter path for Guardian Wallet component evidence. The deterministic TEST-ONLY path remains separate and is retained only for contract and CI locking. V4.8H-C adds the component FN-DSA optional-evidence contract with authenticated `standard_profile` binding.
+Wallet Guardian produces user-protection component decision evidence only. It
+does not sign or broadcast DigiByte transactions, hold wallet keys, change
+consensus, approve spending or execution, produce the final Shield receipt,
+bypass the Shield Orchestrator, or override AdamantineOS.
 
-## Authority Boundary
+The Shield Orchestrator verifies Wallet Guardian evidence. AdamantineOS remains
+the final fail-closed policy and execution boundary.
 
-Guardian Wallet Shield v4 does not sign DigiByte transactions.
-
-Guardian Wallet Shield v4 does not broadcast transactions.
-
-Guardian Wallet Shield v4 does not change DigiByte consensus.
-
-Guardian Wallet Shield v4 does not approve AdamantineOS execution.
-
-Guardian Wallet Shield v4 produces cryptographically verifiable component decision evidence only.
-
-The Shield Orchestrator verifies component evidence before producing a Shield receipt.
-
-AdamantineOS remains the final execution boundary.
-
-## Contract Identity
+## Frozen identities
 
 ```text
 component_id: guardian_wallet
@@ -35,11 +28,13 @@ contract_version: 4
 schema_version: shield.verdict.v2
 canonicalization_profile: shield-v4-canon.v1
 signature_policy: policy.v1
+signature_bundle_schema: shield.signature_bundle.v1
+key_registry_schema: shield.key_registry.v1
 ```
 
-## Signed Payload Fields
+## Signed payload
 
-The unsigned payload covered by `signed_payload_hash` contains:
+The domain-separated canonical payload contains:
 
 ```text
 component_id
@@ -61,48 +56,35 @@ signature_policy
 key_registry_version
 ```
 
-The `signature_bundle` and `signed_payload_hash` fields are not part of the payload they sign.
-
-## Canonicalization
-
-Guardian Wallet v4 uses the same Shield v4 canonicalization profile locked in the Orchestrator:
-
-```text
-shield-v4-canon.v1
-```
-
-The signed-payload hash uses this domain tag:
+The bundle and `signed_payload_hash` are outside the payload they sign. The
+component domain is:
 
 ```text
 DGB-SHIELD-V4-COMPONENT-VERDICT:shield.verdict.v2:policy.v1
 ```
 
-A component-verdict signature must never verify as an Orchestrator receipt signature.
+A Wallet Guardian signature cannot verify as an Orchestrator receipt signature
+or transaction signature.
 
-## Signature Policy
+## Signature policy
 
-`policy.v1` requires strict AND semantics:
+`policy.v1` requires strict AND verification in canonical order:
 
 ```text
 classical-ed25519
 ml-dsa
+fn-dsa                    optional and last only
 ```
 
-Optional evidence path:
+A producer canonicalizes supported caller entries without mutation or
+aliasing. A verifier never repairs or sorts a received bundle. Reversed,
+interleaved, optional-first, duplicated, or unknown entries fail before trust
+lookup or cryptographic verification.
 
-```text
-fn-dsa
-```
+Optional FN-DSA may be absent. If present, it must verify and cannot replace or
+rescue either required path.
 
-ML-DSA means ML-DSA, formerly CRYSTALS-Dilithium.
-
-FN-DSA means FN-DSA, based on Falcon.
-
-FN-DSA is not ML-DSA and cannot satisfy the ML-DSA requirement.
-
-## Standard Profiles
-
-Every signature entry carries an authenticated `standard_profile` field. V4.8H-C locks these policy.v1 profiles for component evidence:
+## Profiles
 
 ```text
 classical-ed25519 -> rfc8032-ed25519-v1
@@ -110,143 +92,51 @@ ml-dsa            -> fips204-ml-dsa-65-v1
 fn-dsa            -> fips206-draft-falcon1024-v1
 ```
 
-`fips206-draft-falcon1024-v1` means draft Falcon-1024 evidence only. It is not a final FIPS 206 production proof. The profile value is part of deterministic TEST-ONLY signature material and the real-signature message bytes, so a profile flip after signing fails closed.
+The profile is authenticated inside the real-signature input. Falcon-1024 is
+optional draft evidence, not final FIPS 206 proof.
 
-## FN-DSA Optional Evidence Path
+## Trust profile and key separation
 
-V4.8H-C adds the component FN-DSA optional-evidence contract. FN-DSA is additional hybrid evidence only. It is not rescue logic.
+Only role `shield_component_guardian_wallet` is valid for this component.
+Trust entries bind role, algorithm, key ID, key version, status, validity
+window, and public key. Unknown, revoked, expired, not-yet-valid, wrong-role,
+wrong-algorithm, or mismatched entries fail closed.
 
-Rules:
+The verifier controls trust. Caller-supplied metadata cannot grant authority.
 
-- FN-DSA absent is allowed under policy.v1.
-- FN-DSA valid is recorded as optional evidence.
-- FN-DSA valid cannot rescue failed `classical-ed25519` or failed `ml-dsa`.
-- FN-DSA valid cannot replace a missing required signature.
-- FN-DSA present but invalid, duplicated, unsupported, wrong-role, wrong-domain, wrong-hash, missing from the trust profile, or carrying an unsupported `standard_profile` is DENY.
+## Real backend
 
-All signatures in one bundle bind to the same `signed_payload_hash`. The verifier-required policy wins over embedded evidence.
+The backend-neutral adapter accepts reviewed implementations without adding a
+hard provider dependency. Optional liboqs adapters map `ml-dsa` to
+`ML-DSA-65` and `fn-dsa` to `Falcon-1024`.
 
-### Canonical Signature-Bundle Order
+Real public keys and signatures use strict unpadded
+`b64u:<base64url-bytes>` encoding. TEST-ONLY IDs, keys, or private references
+are rejected at the real-backend boundary. Missing providers, disabled or
+wrong mechanisms, malformed material, native exceptions, and non-boolean
+verifier results fail closed. There is no fallback to deterministic test
+signatures.
 
-Guardian Wallet producers must emit signature entries in this exact `policy.v1`
-order:
+The repository does not add a production classical Ed25519 backend. A
+production deployment must satisfy both required paths through reviewed
+providers.
 
-```text
-classical-ed25519
-ml-dsa
-fn-dsa, when present
-```
+## Required rejection behavior
 
-The bundle builder canonicalizes supported input entries into that sequence
-without mutating or aliasing the caller's list. A verifier must not repair,
-sort, or otherwise normalize a received bundle. Reversed or interleaved
-algorithm sequences are malformed and must fail before trust-registry lookup or
-cryptographic verification.
+Reject missing required signatures, noncanonical order, duplicates,
+unsupported algorithms or profiles, required-path rescue, role or key
+mismatch, revoked or out-of-window keys, context or payload mutation,
+freshness or request mutation, forbidden authority metadata, malformed
+canonical or binary material, deterministic TEST-ONLY material at a real
+boundary, and all backend exceptions.
 
-This ordering rule does not change strict required-signature AND semantics.
-FN-DSA remains optional-last evidence only. It cannot replace or rescue either
-required algorithm.
+## Proof boundary
 
-## Real ML-DSA Backend Path
+Standard CI proves deterministic and fail-closed contract behavior with 100
+percent statement coverage. The dedicated workflow must run the exact native
+ML-DSA-65 and Falcon-1024 nodes with tests=2, skipped=0, failures=0, and
+errors=0.
 
-Guardian Wallet V4.8F-A introduces an optional real backend adapter for the required `ml-dsa` path:
-
-```text
-src/dgb_wallet_guardian/v4/real_crypto_backend.py
-src/dgb_wallet_guardian/v4/oqs_mldsa_backend.py
-```
-
-The OQS adapter maps Shield algorithm `ml-dsa` to OQS mechanism `ML-DSA-65`.
-
-The adapter:
-
-- does not vendor liboqs;
-- does not add a hard `pyproject.toml` dependency;
-- lazily imports `oqs` only when used;
-- rejects missing or disabled OQS mechanisms;
-- rejects wrong OQS mechanism selection;
-- rejects malformed `b64u:` public keys or signatures;
-- rejects surrounding whitespace in real-backend signature fields;
-- rejects empty decoded real binary material;
-- rejects deterministic TEST-ONLY key material at the real backend boundary;
-- wraps native OQS/liboqs and backend adapter exceptions inside the Guardian Wallet real-backend fail-closed error hierarchy;
-- provides no fallback from real backend mode to deterministic TEST-ONLY signatures.
-
-Real binary signatures and public keys use this encoding shape:
-
-```text
-b64u:<unpadded-base64url-bytes>
-```
-
-This step does not add a production `classical-ed25519` backend. A production real-backend deployment must still satisfy both required policy paths.
-
-## Freshness and Anti-Replay
-
-Every signed Guardian Wallet v4 verdict carries:
-
-```text
-request_id
-freshness_nonce
-not_before
-not_after
-```
-
-These fields are inside the signed payload.
-
-A verifier must reject stale, malformed, duplicate, or replayed verdicts according to the Orchestrator receipt policy and replay-state rules.
-
-## Fail-Closed Rules
-
-A verifier must reject:
-
-- missing signature bundle
-- missing required algorithm
-- duplicate algorithm entry
-- unknown algorithm
-- wrong key id
-- revoked key
-- invalid key window
-- changed context hash
-- changed request id
-- changed decision
-- changed reason ids
-- changed evidence hash
-- changed metadata
-- forbidden authority metadata
-- malformed canonical payload
-- `null` or float values in signed fields
-- missing OQS backend when real ML-DSA mode is selected
-- disabled or wrong OQS ML-DSA mechanism
-- malformed `b64u:` real binary material
-- structurally valid but backend-invalid OQS key or signature material
-- native OQS/liboqs signing, verification, import, mechanism-discovery, version-discovery, or private-key-resolution exception
-- generic backend sign, verify, algorithm-discovery, or non-boolean-verify-result exception
-- unsupported `standard_profile`
-- `standard_profile` flipped after signing
-- FN-DSA present but invalid, duplicated, wrong-role, wrong-domain, wrong-hash, or missing from the trust profile
-- extra fields in real-backend signature entries or registry key records
-- deterministic TEST-ONLY material at the real backend boundary
-- reversed or interleaved signature algorithms
-
-## V4.8H-E Live Falcon-1024 Backend Extension
-
-V4.8H-E adds a backend adapter for optional FN-DSA evidence using liboqs `Falcon-1024` under the locked Shield profile `fips206-draft-falcon1024-v1`.
-
-The extension keeps the same component-verdict contract:
-
-- `classical-ed25519` and `ml-dsa` remain required under `policy.v1`;
-- FN-DSA remains optional evidence;
-- present-invalid FN-DSA remains fatal;
-- a valid FN-DSA signature never rescues a failed required signature;
-- the `standard_profile` remains authenticated inside the real-signature input;
-- this component still does not sign transactions, broadcast, change DigiByte consensus, or grant AdamantineOS final authority.
-
-## Test-Only Cryptography Warning
-
-The original Guardian Wallet v4 pilot uses deterministic TEST-ONLY signatures for contract and CI locking.
-
-These test signatures are not production private keys and are not production ML-DSA or FN-DSA implementations.
-
-Production PQC adapters must satisfy the same signed payload, domain tag, key role, key version, freshness, policy, `standard_profile`, and bundle-binding rules.
-
-The V4.8F-A OQS adapter is a real-backend path for Guardian Wallet component evidence only. It does not create transaction signing, broadcast, consensus, or final-execution authority.
+Native proof uses test keys. It does not establish production custody, HSM
+assurance, provider hardening, transaction signing, or final FIPS 206
+conformance.
