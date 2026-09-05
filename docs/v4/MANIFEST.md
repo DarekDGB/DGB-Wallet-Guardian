@@ -1,8 +1,20 @@
-# Guardian Wallet Shield v4 Manifest
+# Wallet Guardian Shield v4 Manifest and Trust Profile
 
+Status: controlled `4.0.0` release candidate; not released or tagged
 Author attribution: DarekDGB
 
-## Component
+## Distribution
+
+```text
+project: dgb-wallet-guardian
+distribution_version: 4.0.0
+candidate_tag: v4.0.0
+release_authorized: no
+```
+
+Distribution metadata is not a protocol identifier.
+
+## Component identity
 
 ```text
 name: DGB Wallet Guardian
@@ -12,13 +24,7 @@ contract_version: 4
 schema_version: shield.verdict.v2
 ```
 
-## Purpose
-
-Guardian Wallet Shield v4 emits cryptographically verifiable component verdict evidence for the Shield Orchestrator.
-
-Guardian Wallet remains an evidence producer, not a transaction signer, broadcaster, consensus layer, wallet custody layer, or AdamantineOS override layer.
-
-## Frozen Profiles
+## Frozen profiles
 
 ```text
 canonicalization_profile: shield-v4-canon.v1
@@ -27,50 +33,32 @@ signature_bundle_schema: shield.signature_bundle.v1
 key_registry_schema: shield.key_registry.v1
 ```
 
-## Required Signature Paths
+The `4.0.0` version alignment changes none of these identities and changes no
+v3 compatibility identity.
 
-```text
-classical-ed25519
-ml-dsa
-```
+## Signature policy
 
-Both required paths must verify for policy.v1.
-
-V4.8F-A adds a real OQS-backed adapter for the `ml-dsa` path only. It does not weaken the requirement for `classical-ed25519`.
-
-## Optional Signature Path
-
-```text
-fn-dsa
-```
-
-FN-DSA may provide additional evidence, but it never overrides a failed required path. V4.8H-C keeps FN-DSA optional: absence is allowed, but presence is fatal if the FN-DSA entry is invalid, malformed, unsupported, duplicated, wrong-role, wrong-hash, wrong-domain, or has no matching active component trust-profile key.
-
-## Algorithm Naming
-
-ML-DSA is the NIST-standardized name for the signature direction formerly known as CRYSTALS-Dilithium.
-
-FN-DSA is based on Falcon.
-
-FN-DSA and ML-DSA are separate signature directions.
-
-Shield v4 uses the algorithm identifier `fn-dsa`, not the Q-ID `pqc-` prefix.
-
-## Standard Profiles
-
-Every signature entry carries an authenticated `standard_profile` field. V4.8H-C locks these policy.v1 profiles for component evidence:
+Required paths:
 
 ```text
 classical-ed25519 -> rfc8032-ed25519-v1
 ml-dsa            -> fips204-ml-dsa-65-v1
-fn-dsa            -> fips206-draft-falcon1024-v1
 ```
 
-`fips206-draft-falcon1024-v1` means draft Falcon-1024 evidence only. It is not a final FIPS 206 production proof. The profile value is part of deterministic TEST-ONLY signature material and the real-signature message bytes, so a profile flip after signing fails closed.
+Optional-last path:
 
-## Trust Profile
+```text
+fn-dsa -> fips206-draft-falcon1024-v1
+```
 
-The Guardian Wallet v4 trust profile requires:
+Both required paths must verify. Optional FN-DSA may be absent; if present it
+must verify and cannot replace or rescue a required path. The Falcon-1024
+profile is draft evidence, not final FIPS 206 proof. Received bundles are not
+repaired or reordered.
+
+## Trust entry schema
+
+Each Wallet Guardian trust entry requires:
 
 ```text
 role
@@ -83,92 +71,37 @@ status
 public_key
 ```
 
-The only valid Guardian Wallet role in this component package is:
+Only `shield_component_guardian_wallet` is valid. The algorithm remains
+separate from the role. Wrong-role, unknown, revoked, expired, not-yet-valid,
+wrong-algorithm, or malformed entries fail closed.
+
+## Real backend mapping
 
 ```text
-shield_component_guardian_wallet
+Shield ml-dsa -> liboqs ML-DSA-65
+Shield fn-dsa -> liboqs Falcon-1024
 ```
 
-A revoked key, unknown key, wrong role, wrong algorithm, invalid validity window, malformed real binary key, or deterministic TEST-ONLY key in real backend mode fails closed. The trust profile preserves the `(role, algorithm)` model; FN-DSA uses the component role plus `algorithm: fn-dsa`, and the algorithm is not folded into the role name.
+The provider is lazy and optional. No hard liboqs dependency or production-key
+claim is added. Real material uses strict unpadded `b64u:` encoding and
+TEST-ONLY material is rejected before provider invocation.
 
-## Real Backend Files
+## Evidence-only boundary
 
-V4.8F-A adds:
+Wallet Guardian does not sign or broadcast transactions, hold wallet keys,
+modify consensus, approve execution, produce the final Shield receipt, bypass
+the Orchestrator, or override AdamantineOS. AdamantineOS remains the final
+fail-closed policy and execution boundary.
+
+## Frozen evidence fixtures
 
 ```text
-src/dgb_wallet_guardian/v4/real_crypto_backend.py
-src/dgb_wallet_guardian/v4/oqs_mldsa_backend.py
-docs/v4/REAL_CRYPTO_BACKEND.md
-THIRD_PARTY_NOTICES.md
+tests/fixtures/v4/component_verdict_policy_v1_kat.json
+SHA-256: 176d9d8f7d16be456f2bf783c3031b65c46fd5f9efed1aba89d216b98406b0ff
+
+tests/fixtures/v4/fn_dsa_signed_message_draft_profile_kat.json
+SHA-256: b799b963cb46ccf579a0380cffeecd81f99fa616267e6d69fec4f2bf06e9f6ef
 ```
 
-The OQS adapter maps:
-
-```text
-Shield algorithm: ml-dsa
-OQS mechanism:    ML-DSA-65
-```
-
-It lazily imports `oqs` only when used and does not add a hard dependency to `pyproject.toml`.
-
-## Current Implementation Status
-
-V4.5A provided:
-
-- a parallel `dgb_wallet_guardian.v4` package;
-- canonical component-verdict signed payload construction;
-- deterministic TEST-ONLY signature entries;
-- strict signature-bundle validation;
-- Guardian Wallet role-bound trust profile validation;
-- negative tests for tampering, context mismatch, and missing signatures.
-
-V4.8F-A adds:
-
-- a backend-neutral real crypto adapter for Guardian Wallet component verdict evidence;
-- strict `b64u:<unpadded-base64url-bytes>` real binary material encoding;
-- a lazy OQS/liboqs ML-DSA backend mapped to `ML-DSA-65`;
-- tests proving OQS missing, disabled, wrong mechanism, malformed binary material, native OQS/liboqs exceptions, generic backend exceptions, non-boolean verify results, resolver exceptions, exact field-set violations, and TEST-ONLY material all fail closed.
-
-
-V4.8G adds:
-
-- a gated real-liboqs ML-DSA proof test for Guardian Wallet;
-- a JUnit not-skipped guard for the dedicated real-OQS workflow;
-- optional backend-reported public-key/signature length enforcement before native verify;
-- `.github/workflows/shield-v4-real-oqs.yml` as an optional real-OQS proof harness.
-
-The gated workflow is not a hard dependency for normal CI. It becomes proof only when `SHIELD_V4_REAL_OQS=1` runs on a liboqs-enabled runner and the JUnit guard confirms the test did not skip.
-
-
-## V4.8G-R4 Audit Cleanup
-
-V4.8G-R4 closes the audit cleanup items for component canonicalization drift by adding:
-
-- the shared frozen component-verdict KAT fixture in `tests/fixtures/v4/component_verdict_policy_v1_kat.json`;
-- a KAT lock test that must reproduce signed payload hash `a3881f27444ce73de875a15c8b413785a4fec4f4c03baaa6f8ee2fbf839736ae`;
-- explicit proof that null and float mutations of the KAT payload fail before signing.
-
-The KAT is TEST-ONLY deterministic evidence. It is not production key material and does not claim live liboqs execution.
-
-## V4.8H-C FN-DSA Component Parity
-
-V4.8H-C adds:
-
-- authenticated `standard_profile` in component signature entries;
-- `standard_profile` binding inside `build_real_crypto_signature_input`;
-- Falcon-1024 draft profile locking for optional `fn-dsa` evidence;
-- shared component FN-DSA signed-message KAT fixture in `tests/fixtures/v4/fn_dsa_signed_message_draft_profile_kat.json`;
-- tests proving FN-DSA absence is allowed, valid FN-DSA is recorded, present-invalid FN-DSA is fatal, and FN-DSA cannot rescue failed or missing required signatures.
-
-V4.8H-C does not claim final FIPS 206 compliance. V4.8H-E adds the gated live Falcon-1024 backend path while keeping FN-DSA optional and draft-profile only.
-
-## V4.8H-E Final Hybrid Evidence Lock
-
-V4.8H-E adds:
-
-- the optional OQS Falcon-1024 backend in `src/dgb_wallet_guardian/v4/oqs_falcon_backend.py`;
-- deterministic backend-contract tests in `tests/test_v48h_e_oqs_falcon_backend.py`;
-- a gated real-liboqs Falcon-1024 proof test in `tests/test_v48h_e_real_oqs_falcon_backend.py`;
-- a dedicated PQC workflow that runs both live ML-DSA and live Falcon-1024 proofs with the not-skipped JUnit guard.
-
-The H-E lock keeps FN-DSA optional. It does not upgrade FN-DSA to required policy, does not claim final FIPS 206 support, and does not let Falcon/FN-DSA override required `classical-ed25519` or `ml-dsa` failures.
+These fixtures are deterministic TEST-ONLY evidence. They do not claim
+production keys or native-provider execution.
