@@ -1,293 +1,180 @@
-# 🔐 DigiByte Wallet Guardian (v3.2.0)
+# DGB Wallet Guardian 4.0.0 Candidate
 
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/DarekDGB/DGB-Wallet-Guardian/actions/workflows/tests.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
-![Status](https://img.shields.io/badge/status-CONTRACT--LOCKED-critical)
+![Status](https://img.shields.io/badge/status-CONTROLLED--PRE--RELEASE-orange)
 
-**Shield Layer 4 • User-Side Protection Gate • Contract-Locked • v3.2.0 Integration Candidate**
+Author attribution: DarekDGB
 
-Guardian Wallet is the **user-protection layer** of the DigiByte Quantum Shield.
-It evaluates wallet intent, transaction context, verified Q-ID authentication facts, and external safety signals, then returns a **deterministic, fail-closed verdict** before any signing or execution can occur.
+Distribution version: `4.0.0`
+Candidate tag: `v4.0.0`
+Release status: controlled pre-release; not released and not tagged
 
-> Guardian **never signs**, **never broadcasts**, **never holds keys**, and **never becomes final AdamantineOS execution authority**.
+DGB Wallet Guardian is the user-protection decision-evidence component of the
+DigiByte Quantum Shield. It evaluates bounded wallet intent and verified
+authentication context, and its parallel Shield v4 surface produces role-bound
+component verdict evidence for the Shield Orchestrator.
 
----
+The distribution retains the frozen v3 compatibility evaluator while exposing
+the separately versioned Shield v4 evidence contract. A distribution-version
+bump does not rewrite either protocol.
 
-## What Guardian Wallet Is
+## Authority boundary
 
-Guardian Wallet v3 is a **contract gate**, not a wallet.
+Wallet Guardian does not:
 
-It:
+- sign or broadcast DigiByte transactions;
+- hold, derive, access, or control wallet private keys;
+- modify balances, chain state, mempool rules, or DigiByte consensus;
+- approve spending or execution;
+- produce the final Shield receipt;
+- bypass the Shield Orchestrator; or
+- override AdamantineOS.
 
-- evaluates wallet and transaction context
-- evaluates verified Q-ID authentication facts through explicit `mode="qid_auth"`
-- produces deterministic `allow`, `escalate`, or `deny` outcomes
-- emits stable reason codes for orchestration and audit
-- contributes evidence to the Shield Orchestrator
-- supports the v3.2.0 manifest, verdict, evidence, and proof-pack lock required before AdamantineOS integration
+The Shield Orchestrator verifies Wallet Guardian component evidence and
+produces the only Shield receipt AdamantineOS may consume. AdamantineOS remains
+the final fail-closed policy and execution boundary. Shield `ALLOW` permits
+only continuation to those independent checks.
 
-Guardian can evaluate and signal risk, but it does **not** execute anything.
+Wallet Guardian may sign or verify its own component decision evidence through
+the reviewed Shield v4 interfaces. That evidence signing is domain-separated
+from transaction signing and grants no wallet-key custody or execution
+authority.
 
----
+## Shield v4 component contract
 
-## What Guardian Wallet Is Not
-
-Guardian Wallet does **not**:
-
-- hold or derive private keys
-- sign transactions
-- broadcast transactions
-- modify balances or chain state
-- replace DigiByte Core
-- bypass EQC, WSQK, Shield Orchestrator, or AdamantineOS policy
-- approve AdamantineOS execution directly
-
-Raw Guardian output is **component evidence only**. AdamantineOS must consume Shield through a deterministic Shield Orchestrator receipt.
-
----
-
-## Position in the DigiByte Quantum Shield
+Wallet Guardian uses these frozen identities:
 
 ```text
-┌─────────────────────────────────────────────┐
-│           Adamantine Wallet OS              │
-│  consumes Shield only through receipt       │
-└─────────────────────────────────────────────┘
-                     ▲
-                     │ deterministic Orchestrator receipt
-┌─────────────────────────────────────────────┐
-│        Shield Orchestrator v3.2.0           │
-│  final Shield aggregation / receipt gate    │
-└─────────────────────────────────────────────┘
-                     ▲
-                     │ component verdict evidence
-┌─────────────────────────────────────────────┐
-│        Guardian Wallet v3.2.0               │
-│  user-side intent + auth evaluation gate    │
-└─────────────────────────────────────────────┘
-                     ▲
-          ┌──────────┴──────────┐
-          │                     │
-  tx request context     Q-ID verified auth facts
+component_id: guardian_wallet
+component_role: shield_component_guardian_wallet
+contract_version: 4
+schema_version: shield.verdict.v2
+canonicalization_profile: shield-v4-canon.v1
+signature_policy: policy.v1
+signature_bundle_schema: shield.signature_bundle.v1
+key_registry_schema: shield.key_registry.v1
 ```
 
-Guardian Wallet sits **between user intent and authority**, but it remains subordinate to the Shield Orchestrator.
+The distribution alignment to `4.0.0` changes none of these protocol or schema
+identities.
 
----
+## Signature policy and canonical order
 
-## Core Guarantees
+`policy.v1` requires strict AND verification of both required paths. Optional
+FN-DSA evidence may be absent. When present, it must verify and must be last:
 
-### Fail-Closed by Design
+```text
+classical-ed25519
+ml-dsa
+fn-dsa                    optional and last only
+```
 
-- Malformed, invalid, oversized, unsafe, or unsupported requests return `outcome="deny"`.
-- Callers must treat `deny` as **BLOCK**.
-- Unknown or ambiguous authority is rejected.
+Profiles are fixed as follows:
 
-### Deterministic
+```text
+classical-ed25519 -> rfc8032-ed25519-v1
+ml-dsa            -> fips204-ml-dsa-65-v1
+fn-dsa            -> fips206-draft-falcon1024-v1
+```
 
-- Identical valid input produces identical output.
-- Deterministic hashes are based on canonical JSON.
-- No time, randomness, environment state, or hidden external authority may influence verdicts.
+Optional FN-DSA cannot replace or rescue either required path. Present but
+invalid optional evidence is fatal. The Falcon-1024 profile is draft evidence,
+not final FIPS 206 proof.
 
-### Strict Contract
+## Role and key separation
 
-- Unsupported contract versions fail closed.
-- Unknown top-level keys are rejected.
-- Unknown nested keys are rejected.
-- NaN and ±Inf values are rejected.
+The trust profile accepts only `shield_component_guardian_wallet` keys for
+Wallet Guardian component evidence. Trust entries bind role, algorithm, key ID,
+key version, status, validity window, and public key. The real-signature input
+separately authenticates the domain, payload hash, algorithm, standard profile,
+key ID, and key version. Wrong-role, revoked, expired, unknown, downgraded, or
+mismatched evidence fails closed.
 
-### No Hidden Authority
+Wallet Guardian component signatures cannot be reused as Orchestrator receipt
+signatures or transaction signatures because their domains, roles, and
+payloads differ.
 
-- Guardian can only evaluate and signal.
-- Guardian cannot escalate privileges.
-- Guardian cannot override the Shield Orchestrator.
-- Guardian cannot approve AdamantineOS execution directly.
+## Real-crypto proof boundary
 
----
+The backend-neutral adapter supports reviewed provider integrations. The
+optional liboqs adapters map:
 
-## Public API (v3)
+```text
+ml-dsa -> ML-DSA-65
+fn-dsa -> Falcon-1024
+```
+
+Default CI proves deterministic contracts, test-double behavior, KATs,
+negative paths, and 100 percent statement coverage. It does not prove native
+liboqs execution. The dedicated `Shield v4 Real OQS ML-DSA and Falcon-1024
+Proof` workflow must execute exactly the two guarded native nodes with zero
+skips, failures, or errors before a live-liboqs claim is made.
+
+Native tests use test keys. They do not prove production key custody, HSM
+assurance, provider hardening, transaction signing, or final FIPS 206
+conformance. The repository also does not provide a production classical
+Ed25519 backend; a production deployment must still satisfy both required
+policy paths.
+
+## Public APIs and compatibility
+
+The retained v3 evaluator remains available as a compatibility surface:
 
 ```python
 from dgb_wallet_guardian.v3 import GuardianWalletV3
 
-gw = GuardianWalletV3()
-result = gw.evaluate(request_dict)
+guardian = GuardianWalletV3()
+result = guardian.evaluate(request_dict)
 ```
 
-Supported modes:
-
-- `tx`
-- `qid_auth`
-
----
-
-## Outcome Mapping
-
-| Risk Level | Outcome |
-|---|---|
-| `NORMAL` | `allow` |
-| `ELEVATED` | `escalate` |
-| `HIGH` / `CRITICAL` | `deny` |
-
----
-
-## Contract Versioning
-
-Supported Guardian contract version:
+Its frozen identities remain:
 
 ```text
-3
+contract_version: 3
+package_version compatibility field: 3.2.0
 ```
 
-Constants:
+The public distribution and top-level runtime version are `4.0.0`. The v3
+`PACKAGE_VERSION = "3.2.0"` value belongs to the historical v3 manifest and is
+intentionally unchanged. New Shield integrations should use the v4 evidence
+surface; v3 evidence must not be accepted when policy requires v4.
+
+## V4 documentation
+
+- Contract: `docs/v4/CONTRACT.md`
+- Manifest and trust profile: `docs/v4/MANIFEST.md`
+- Real-crypto backend: `docs/v4/REAL_CRYPTO_BACKEND.md`
+- Test matrix: `docs/v4/TEST_MATRIX.md`
+- Proof pack: `docs/v4/PROOF_PACK.md`
+- Release status: `docs/v4/RELEASE_STATUS_v4.0.0.md`
+
+Tests and normative contract documents define truth. A public claim must not
+exceed the evidence recorded in the proof pack and release status.
+
+## Development
+
+Install test dependencies and run the committed standard gate:
 
 ```text
-COMPONENT = "guardian_wallet"
-CONTRACT_VERSION = 3
+python -m pip install -e ".[test]"
+pytest --cov=dgb_wallet_guardian --cov-report=term-missing --cov-fail-under=100 -q
 ```
 
-Any unsupported contract version must fail closed.
+The two native-OQS tests are intentionally skipped in an ordinary local run.
+The dedicated workflow enables them and rejects any skip.
 
----
+## Release governance
 
-## Q-ID Authentication Mode
-
-Guardian Wallet v3 supports direct evaluation of verified Q-ID authentication facts.
-
-For `mode="qid_auth"`:
-
-- `wallet_ctx` must be empty
-- `tx_ctx` must be empty
-- `auth_ctx` carries verified Q-ID facts
-- `extra_signals` may carry optional device or Sentinel signals
-
-Typical auth outcomes:
-
-- `allow` for clean verified authentication
-- `escalate` for step-up conditions
-- `deny` for unverified, malformed, or invalid authentication requests
-
-See:
-
-- `docs/v3/GUARDIAN_QID_AUTH_INTEGRATION.md`
-
----
-
-## v3.2.0 Manifest / Verdict / Receipt Boundary
-
-Guardian v3.2.0 adds the integration lock required by the Shield v3.2.0 roadmap.
-
-This repository now includes:
-
-- component manifest documentation
-- allowed reason ID registry
-- allowed evidence family registry
-- canonical component verdict lock
-- proof-pack documentation
-- test matrix documentation
-- negative tests for malformed manifest and verdict behavior
-
-The v3.2.0 rule is strict:
-
-```text
-Guardian evidence is not final authority.
-AdamantineOS must consume Shield through the deterministic Shield Orchestrator receipt only.
-```
-
-See:
-
-- `docs/v3/MANIFEST.md`
-- `docs/v3/REASON_IDS.md`
-- `docs/v3/EVIDENCE_FAMILIES.md`
-- `docs/v3/TEST_MATRIX.md`
-- `docs/v3/PROOF_PACK.md`
-
----
-
-## Deterministic Context Hash
-
-Every Guardian response includes a `context_hash`:
-
-- SHA-256 over canonical JSON
-- stable across runs
-- suitable for audit, replay checks, and orchestration
-- never dependent on runtime environment, object ordering, randomness, or current time
-
----
-
-## Tests & Guarantees
-
-Guardian Wallet v3 is regression-locked with tests enforcing:
-
-- strict schema validation
-- fail-closed behavior
-- deterministic hashing
-- adapter safety
-- `qid_auth` mode correctness
-- invalid mode rejection
-- parser exception fail-closed handling
-- non-dict context rejection
-- oversized and unserialisable payload rejection
-- Q-ID auth field validation
-- Sentinel escalation paths
-- device mismatch escalation
-- Guardian Engine HIGH / CRITICAL severity paths
-- stable normalization helper behavior
-- explicit unreachable safety fallbacks
-- v3.2.0 manifest and canonical verdict lock behavior
-
-The CI workflow enforces:
-
-```bash
-pytest --cov=dgb_wallet_guardian --cov-fail-under=100 -q
-```
-
-Current first-pass v3.2.0 proof:
-
-```text
-100% coverage enforced
-0 missed statements required
-```
-
-Tests define truth. No release is considered locked unless CI proves the coverage gate.
-
----
-
-## Release Status
-
-Current upgrade target:
-
-```text
-v3.2.0
-```
-
-Previous stable hardening release:
-
-```text
-v3.1.0
-```
-
-Previous stable baseline:
-
-```text
-v3.0.0
-```
-
-v3.2.0 is the **manifest / verdict / receipt integration track** for AdamantineOS readiness.
-
-Further changes require:
-
-- contract version review
-- regression tests
-- CI proof
-- no weakening of the 100% coverage gate
-- no undocumented behavior change
-- no direct AdamantineOS execution authority from raw Guardian output
-
----
+`4.0.0` is the aligned distribution candidate and `v4.0.0` is only the
+candidate tag name. No release decision has been authorized. Do not create or
+move `v4.0.0` until all controlled V4.10 gates are complete and DarekDGB
+explicitly authorizes the release action.
 
 ## License
 
-MIT License — DarekDGB 2025
+MIT License. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
+
+Copyright 2025 DarekDGB
