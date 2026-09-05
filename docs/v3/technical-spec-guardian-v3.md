@@ -12,7 +12,7 @@ authority wording no longer define the repository contract.
 
 Use these current sources instead:
 
-- `README.md` for the supported v3.2.0 overview;
+- `README.md` for the active distribution and Shield v4 candidate overview;
 - `SECURITY.md` for the fail-closed and authority boundary;
 - `docs/v3/GUARDIAN_V3.md` for the current v3 request and verdict contract;
 - `docs/v3/MANIFEST.md` for the v3.2.0 identity and registry lock;
