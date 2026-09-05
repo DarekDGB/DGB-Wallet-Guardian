@@ -1,102 +1,54 @@
-# Guardian Wallet Shield v4 Real Crypto Backend Contract
+# Wallet Guardian Shield v4 Real Crypto Backend
 
+Status: controlled `4.0.0` release candidate; not released or tagged
 Author attribution: DarekDGB
 
-## Status
+## Boundary
 
-This document locks the Guardian Wallet Shield v4 real-crypto backend boundary for component verdict evidence.
+The real-backend path signs and verifies Wallet Guardian component decision evidence only.
+It does not sign or broadcast DigiByte transactions, hold
+wallet keys, change consensus, create the final Shield receipt, bypass the
+Orchestrator, or grant AdamantineOS final authority.
 
-V4.8F-A introduces a deployment-controlled real ML-DSA adapter path for Guardian Wallet. It does not replace the deterministic TEST-ONLY signature path used by contract tests. V4.8H-C adds authenticated `standard_profile` binding and optional FN-DSA draft-profile evidence semantics. It does not make Guardian Wallet a transaction signer, broadcaster, consensus layer, wallet custody layer, or AdamantineOS final authority.
+It does not make Guardian Wallet a transaction signer. Component evidence
+signing remains a separate, domain-bound operation.
 
-## Non-authority lock
-
-Guardian Wallet Shield v4 cryptography proves Guardian Wallet component decision evidence only.
-
-Guardian Wallet still must not:
-
-- sign DigiByte transactions;
-- broadcast transactions;
-- change DigiByte consensus;
-- grant final execution approval;
-- bypass the Shield Orchestrator;
-- bypass AdamantineOS.
-
-The Shield Orchestrator verifies Guardian Wallet component evidence before producing a Shield receipt. AdamantineOS remains the final execution boundary.
-
-## Algorithm lock
-
-Shield v4 policy `policy.v1` uses these names:
+## Algorithms and profiles
 
 - `classical-ed25519` - required classical signature path;
 - `ml-dsa` - required PQC path; ML-DSA was formerly CRYSTALS-Dilithium;
 - `fn-dsa` - optional evidence path based on Falcon.
 
-`fn-dsa` is not ML-DSA. It must never override failure of the required `classical-ed25519` or `ml-dsa` paths.
-
-## Standard profile binding
-
-V4.8H-C extends the neutral real-crypto signature-entry contract with authenticated `standard_profile` binding. The locked policy.v1 profiles are:
+FN-DSA/Falcon-1024 remains distinct from ML-DSA.
 
 ```text
-classical-ed25519 -> rfc8032-ed25519-v1
-ml-dsa            -> fips204-ml-dsa-65-v1
-fn-dsa            -> fips206-draft-falcon1024-v1
+classical-ed25519 -> rfc8032-ed25519-v1       required
+ml-dsa            -> fips204-ml-dsa-65-v1    required
+fn-dsa            -> fips206-draft-falcon1024-v1 optional-last
 ```
 
-`fn-dsa` is optional evidence based on Falcon-1024. It is separate from ML-DSA and cannot override required classical or ML-DSA failures. The draft Falcon profile is not a final FIPS 206 production proof. Future final-profile support must add a separate profile, KATs, registry keys, docs, and tests instead of reinterpreting draft signatures.
+Optional FN-DSA cannot replace or rescue either required path. Falcon-1024 is
+draft-profile evidence, not final FIPS 206 proof.
 
-## Backend model
+## Provider mappings
 
-Guardian Wallet exposes a backend-neutral adapter contract in:
+The backend-neutral adapter is
+`src/dgb_wallet_guardian/v4/real_crypto_backend.py`. Optional liboqs adapters
+map:
 
 ```text
-src/dgb_wallet_guardian/v4/real_crypto_backend.py
+ml-dsa -> ML-DSA-65
+fn-dsa -> Falcon-1024
 ```
 
-The neutral adapter does not require a specific PQC library. Real deployments may connect liboqs, an HSM, a FIPS-validated module, or another reviewed backend through the same interface.
+Providers are imported only when selected. No hard liboqs dependency is added.
+A missing provider, disabled or wrong mechanism, native exception, or
+non-boolean verifier result fails closed.
 
-The optional OQS ML-DSA backend lives in:
+## Frozen signature input
 
-```text
-src/dgb_wallet_guardian/v4/oqs_mldsa_backend.py
-```
-
-It lazily imports `oqs` only when used, so normal CI and non-OQS deployments do not silently depend on local machine crypto state. If OQS is missing, disabled, lacks the locked mechanism, or raises a native backend exception, the adapter wraps that failure inside the Guardian Wallet real-backend fail-closed error hierarchy.
-
-## OQS ML-DSA mapping
-
-For Shield v4 `policy.v1`, the optional OQS backend maps:
-
-```text
-Shield algorithm: ml-dsa
-OQS mechanism:    ML-DSA-65
-```
-
-The mechanism is deliberately locked for this backend. A caller cannot silently swap `ML-DSA-44`, `ML-DSA-87`, Falcon/FN-DSA, or another mechanism behind the Shield policy name.
-
-## V4.8H-E OQS Falcon-1024 mapping
-
-V4.8H-E adds an optional OQS Falcon-1024 backend for live FN-DSA draft-profile evidence:
-
-```text
-src/dgb_wallet_guardian/v4/oqs_falcon_backend.py
-tests/test_v48h_e_oqs_falcon_backend.py
-tests/test_v48h_e_real_oqs_falcon_backend.py
-```
-
-The backend mapping is locked as:
-
-```text
-Shield algorithm: fn-dsa
-standard_profile: fips206-draft-falcon1024-v1
-OQS mechanism:    Falcon-1024
-```
-
-This backend is optional evidence only. It does not make FN-DSA required, does not let FN-DSA rescue failed or missing `classical-ed25519` or `ml-dsa`, does not sign transactions, does not broadcast, and does not change DigiByte consensus. It is draft Falcon-1024 profile evidence only, not a final FIPS 206 production claim.
-
-## Frozen real-signature input
-
-Every real Guardian Wallet component-verdict signature signs the exact byte string:
+Every real Wallet Guardian component signature signs these LF-separated fields
+with no terminal LF:
 
 ```text
 DGB-SHIELD-V4-REAL-CRYPTO-SIGNATURE-INPUT
@@ -108,112 +60,42 @@ DGB-SHIELD-V4-REAL-CRYPTO-SIGNATURE-INPUT
 <key_version>
 ```
 
-Rules:
+The domain is
+`DGB-SHIELD-V4-COMPONENT-VERDICT:shield.verdict.v2:policy.v1`. The domain,
+payload hash, algorithm, profile, key ID, and key version are authenticated in
+the real-signature input. The verifier-controlled trust entry separately
+enforces role, algorithm, key ID, key version, status, validity window, and
+public key.
 
-- UTF-8 encoding only;
-- line separator is LF (`\n`);
-- no trailing newline;
-- `domain_tag` must be `DGB-SHIELD-V4-COMPONENT-VERDICT:shield.verdict.v2:policy.v1`;
-- `signed_payload_hash` must be lowercase SHA-256 hex;
-- `algorithm`, `standard_profile`, `key_id`, and `key_version` must match the Guardian Wallet trust-profile entry.
+## Binary material
 
-The `standard_profile` is authenticated message input, not display-only metadata. The `signed_payload_hash` is already computed over the domain-separated canonical Guardian Wallet verdict payload. The real-signature input binds that hash to the concrete signature entry so signatures cannot be spliced across algorithms, standard profiles, keys, roles, or bundles.
+Real keys and signatures use strict unpadded
+`b64u:<base64url-bytes>` encoding. Padding, malformed alphabet, empty bytes,
+wrong length, or backend-invalid material fails closed.
 
-V4.8H-E extends the dedicated PQC workflow so it sets both `SHIELD_V4_REAL_OQS=1` and `SHIELD_V4_REAL_OQS_FALCON=1`, then runs the ML-DSA proof and the Falcon-1024 proof in the same guarded JUnit report:
+Deterministic test IDs, TEST-ONLY public keys, and test-only private references
+are rejected at the real-backend boundary. There is no automatic fallback to
+test signatures.
 
-```text
-python -m pytest --override-ini addopts='' \
-  tests/test_v48g_real_oqs_mldsa_backend.py \
-  tests/test_v48h_e_real_oqs_falcon_backend.py \
-  -q --junitxml=shield-v4-real-oqs-results.xml
-python scripts/assert_real_oqs_junit_not_skipped.py shield-v4-real-oqs-results.xml
-```
+## Dedicated native proof
 
-A public live Falcon-1024 claim requires that dedicated workflow to finish green with `skipped == 0`, `failures == 0`, and `errors == 0` for the guarded report.
-
-## Binary encoding lock
-
-Real ML-DSA and FN-DSA/Falcon-1024 signatures and public keys are binary. Guardian Wallet real backend adapters use explicit unpadded base64url encoding with the prefix:
+Default CI proves interface and fail-closed behavior but not native liboqs
+execution. The dedicated workflow enables both guarded nodes:
 
 ```text
-b64u:<unpadded-base64url-bytes>
+tests/test_v48g_real_oqs_mldsa_backend.py::test_v48g_real_oqs_mldsa65_guardian_backend_round_trip_and_negatives
+tests/test_v48h_e_real_oqs_falcon_backend.py::test_v48h_e_real_oqs_falcon1024_backend_round_trip_and_negatives
 ```
 
-Rules:
+The current command executes the two named nodes. Its JUnit guard requires at
+least two tests, both required testcase identities, skipped=0, failures=0, and
+errors=0. A green native proof uses test keys and does not establish production
+custody, HSM assurance, transaction signing, or provider hardening.
 
-- real binary signatures use `b64u:`;
-- real OQS public keys use `b64u:` in the Guardian Wallet trust profile;
-- padding characters (`=`) are rejected;
-- surrounding whitespace is rejected instead of silently stripped;
-- malformed base64url is rejected before calling a crypto backend;
-- empty decoded bytes are rejected;
-- structurally valid base64url that decodes to backend-invalid key or signature lengths must fail closed through `GuardianWalletV4RealCryptoBackendError`;
-- historical 64-character deterministic test digests remain test fixtures only.
-
-## Test-only material rejection
-
-The real-crypto adapter must reject deterministic test material before calling a production backend.
-
-Rejected examples include:
-
-- key ids beginning with `test-`;
-- public keys containing `TEST-ONLY`;
-- private key references containing `test-only` or beginning with `test-`.
-
-There is no automatic fallback from real backend mode to TEST-ONLY deterministic signatures.
-
-## Native backend exception boundary
-
-Native backend exceptions are not allowed to escape as arbitrary exception types.
-
-The Guardian Wallet real-backend boundary wraps failures from:
-
-- backend algorithm discovery;
-- backend signing;
-- backend verification;
-- backend verification returning a non-boolean result;
-- OQS import;
-- OQS version discovery;
-- OQS mechanism discovery;
-- OQS signer/verifier construction;
-- OQS signing or verification;
-- private key resolution.
-
-All such failures must surface through the `GuardianWalletV4RealCryptoBackendError` hierarchy so callers can fail closed consistently. Signature entries and registry key records must also match their exact expected field sets; extra authority-like fields fail closed.
-
-## Policy status
-
-This step adds the real ML-DSA path for Guardian Wallet. Shield v4 `policy.v1` still requires both:
-
-```text
-classical-ed25519
-ml-dsa
-```
-
-A production real-backend deployment must satisfy both required paths. If optional FN-DSA is present, unsupported `standard_profile` values, wrong hashes, wrong domains, duplicate entries, wrong roles, or missing trust-profile keys fail closed. This Guardian Wallet OQS adapter alone does not downgrade policy.v1 and does not allow ML-DSA to replace the required classical path.
-
-
-## V4.8G gated real-liboqs proof
-
-Default package CI proves the backend interface contract and fail-closed behavior using deterministic fake backends. It does not claim that live liboqs ML-DSA ran.
-
-A separate optional GitHub Actions workflow exercises real liboqs only when the dedicated job installs liboqs, sets `SHIELD_V4_REAL_OQS=1`, and runs:
-
-```text
-python -m pytest --override-ini addopts='' tests/test_v48g_real_oqs_mldsa_backend.py -q --junitxml=shield-v4-real-oqs-results.xml
-python scripts/assert_real_oqs_junit_not_skipped.py shield-v4-real-oqs-results.xml
-```
-
-That gated proof checks that `ML-DSA-65` is enabled, generates a real keypair through liboqs, signs through the Guardian Wallet backend, verifies through the same backend, rejects a tampered signature, rejects a cross-key verification attempt, and rejects wrong-length public-key material through the GuardianWalletV4RealCryptoBackendError hierarchy.
-
-A public claim that live liboqs ML-DSA verified for Guardian Wallet requires that dedicated workflow to finish green with the JUnit guard proving `skipped == 0`, `failures == 0`, and `errors == 0`. Full release-grade real-backend proof remains a V4.10 release gate.
+It is not a final FIPS 206 production proof.
 
 ## Third-party attribution
 
-When a real backend is selected, repository-level attribution belongs in:
-
-```text
-THIRD_PARTY_NOTICES.md
-```
-
-The notice identifies the backend family, clarifies that no third-party PQC source is vendored unless explicitly stated, and keeps author attribution as DarekDGB.
+Provider-family notices belong in `THIRD_PARTY_NOTICES.md`. No third-party PQC
+source is vendored unless that notice explicitly says otherwise. First-party
+author attribution remains DarekDGB.
