@@ -1,128 +1,71 @@
-# Contributing to Guardian Wallet
+# Contributing to DGB Wallet Guardian
 
-**Guardian Wallet** is the *user‑side security decision layer* of the DigiByte Quantum Shield.  
-It produces **deterministic, fail‑closed safety verdicts** that can power wallet UX flows  
-or be consumed headlessly by orchestrators such as **Adamantine Wallet OS**.
+Author attribution: DarekDGB
 
-Guardian Wallet is **not** a consensus or network layer.  
-It evaluates intent and signals risk — it does **not** execute transactions.
+DGB Wallet Guardian is the user-protection decision-evidence component of the
+DigiByte Quantum Shield. Contributions must preserve deterministic,
+fail-closed behavior and the strict authority boundary.
 
----
+## Welcome contributions
 
-## ✅ What Contributions Are Welcome
+- clearer deterministic warnings and reason mappings;
+- safer intent and authentication evaluation;
+- bounded integration improvements for verified QWG, ADN, Sentinel AI, Q-ID,
+  or Adaptive Core evidence;
+- Shield v4 contract, trust-profile, and backend hardening;
+- accurate documentation; and
+- positive and negative regression tests.
 
-### ✔️ 1. User‑Side Protection Improvements
-- clearer warnings and explanations  
-- improved confirmation and escalation flows  
-- safer multi‑step approval logic  
-- accessibility and clarity improvements  
+## Non-negotiable boundaries
 
-### ✔️ 2. Integration Enhancements
-- improved QWG signal mapping  
-- better ADN defence translation  
-- cleaner Guardian ↔ Adamantine Wallet interactions  
-- Adaptive Core signal hygiene (deterministic, auditable)
+Wallet Guardian must not:
 
-### ✔️ 3. Runtime Safeguards
-- additional pre‑signing checks  
-- confirmation heuristics  
-- suspicious‑pattern detection logic  
-- improved handling of unusual fees or amounts  
+- sign or broadcast DigiByte transactions;
+- hold, derive, access, or control wallet private keys;
+- validate blocks, alter mempool rules, or change DigiByte consensus;
+- duplicate upstream detection authority;
+- treat probabilistic or black-box output as authority;
+- repair a noncanonical received signature bundle;
+- let optional FN-DSA replace or rescue a required signature;
+- bypass the Shield Orchestrator; or
+- grant AdamantineOS final signing or execution approval.
 
-### ✔️ 4. Documentation & Structure
-- diagrams  
-- architectural explanations  
-- step‑by‑step behaviour documentation  
-- contract and determinism clarifications  
+Wallet Guardian output is component evidence. The Shield Orchestrator verifies
+that evidence and produces the only Shield receipt AdamantineOS may consume.
+AdamantineOS remains the final fail-closed policy and execution boundary.
 
-### ✔️ 5. Test Improvements
-- decision‑flow simulations  
-- behavioural tests for safety flows  
-- regression locks for fail‑closed behaviour  
+## Shield v4 requirements
 
----
+`policy.v1` requires `classical-ed25519`, `ml-dsa`, then optional-last
+`fn-dsa`. The profiles are `rfc8032-ed25519-v1`,
+`fips204-ml-dsa-65-v1`, and `fips206-draft-falcon1024-v1` respectively.
+Optional FN-DSA cannot replace or rescue either required path and is not final
+FIPS 206 proof.
 
-## ❌ What Will NOT Be Accepted
+Changes must preserve component role `shield_component_guardian_wallet`, exact
+canonicalization and schema identities, role and key separation, and
+fail-closed handling of malformed or untrusted data.
 
-### 🚫 1. Any Attempt to Remove Safety Logic
-Guardian Wallet **must never**:
+## Pull request expectations
 
-- reduce safety flows  
-- bypass confirmations  
-- silence warnings  
-- allow unsafe transactions without explanation  
+A valid change includes:
 
-Removing core protection triggers immediate rejection.
+- a precise scope and security rationale;
+- tests for each changed behavior and negative boundary;
+- no undocumented contract, schema, fixture, or authority change;
+- updated documentation when behavior changes;
+- 100 percent statement coverage; and
+- green standard CI plus any applicable guarded real-OQS proof.
 
-### 🚫 2. Changing Consensus or Network Behaviour
-Guardian Wallet must **never**:
+Native provider evidence must never be described as production key custody,
+HSM assurance, transaction signing, or final FIPS 206 conformance.
 
-- validate blocks  
-- change mempool rules  
-- make consensus decisions  
-- act as a validator  
+Architectural direction is controlled by DarekDGB. Tests and normative
+contract documents define truth.
 
-### 🚫 3. Duplicate QWG Logic
-Do **not** replicate behavioural, cryptographic, or PQC logic already inside QWG.  
-Guardian Wallet focuses on **intent evaluation**, not detection.
+## License
 
-### 🚫 4. UI‑Only Changes Without Security Impact
-Purely aesthetic changes are rejected unless they improve user understanding of risk.
+By contributing, you agree that your contribution is licensed under the MIT
+License.
 
-### 🚫 5. Black‑Box Models
-All logic must be:
-
-- transparent  
-- deterministic  
-- auditable  
-
----
-
-## 🧱 Design Principles
-
-1. **Fail‑Closed First**  
-   If Guardian cannot prove safety, it blocks.
-
-2. **Explain Every Warning**  
-   Every escalation must be attributable to a reason code.
-
-3. **Deterministic Behaviour**  
-   Identical input must always yield identical output.
-
-4. **Layer Separation**  
-   Detection happens upstream (QWG, ADN, Sentinel).  
-   Guardian evaluates intent and signals outcomes.
-
-5. **No Hidden Authority**  
-   Guardian never signs, broadcasts, or touches keys.
-
-6. **Interoperability**  
-   Guardian must remain compatible with:
-   - Adamantine Wallet OS  
-   - QWG  
-   - ADN v2 / v3  
-   - Adaptive Core  
-
----
-
-## 🔄 Pull Request Expectations
-
-A valid PR includes:
-
-- a clear description of the change  
-- explanation of its security benefit  
-- updated or new tests  
-- no breaking changes to contracts  
-- no removal of existing protection paths  
-- updated documentation if behaviour changes  
-
-Architectural direction is reviewed by **@DarekDGB**.  
-Technical implementation is reviewed via CI and regression tests.
-
----
-
-## 📝 License
-
-By contributing, you agree your contributions are licensed under the MIT License.
-
-© 2025 **DarekDGB**
+Copyright 2025 DarekDGB
