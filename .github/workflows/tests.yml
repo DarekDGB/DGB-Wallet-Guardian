@@ -1,4 +1,4 @@
-name: Wallet Guardian Tests (v3)
+name: Wallet Guardian Tests
 
 on:
   push:
