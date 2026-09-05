@@ -13,7 +13,8 @@ from dgb_wallet_guardian.contracts.v3_2_lock import (
 )
 
 ALLOWED_ATTRIBUTION = "DarekDGB"
-CURRENT_VERSION = "3.2.0"
+CURRENT_DISTRIBUTION_VERSION = "4.0.0"
+V3_COMPATIBILITY_VERSION = "3.2.0"
 
 V2_HISTORICAL_DOCUMENTS = (
     "docs/v2/technical-spec-wallet-guardian.md",
@@ -68,6 +69,7 @@ def _is_generated(path: Path, root: Path) -> bool:
     relative = path.relative_to(root)
     return (
         path.name in _GENERATED_FILE_NAMES
+        or path.name.startswith(".coverage.")
         or path.suffix in {".pyc", ".pyo"}
         or any(part in _GENERATED_DIRECTORY_NAMES for part in relative.parts)
         or any(part.endswith(".egg-info") for part in relative.parts)
@@ -203,13 +205,13 @@ def test_repository_author_attribution_is_darekdgb_only() -> None:
     assert failures == [], "author attribution lock failures:\n" + "\n".join(failures)
 
 
-def test_active_version_identity_is_exactly_v3_2_0() -> None:
+def test_active_distribution_and_v3_compatibility_versions_are_separate() -> None:
     manifest = build_manifest()
 
-    assert __version__ == CURRENT_VERSION
-    assert _project_version() == CURRENT_VERSION
-    assert PACKAGE_VERSION == CURRENT_VERSION
-    assert manifest["package_version"] == CURRENT_VERSION
+    assert __version__ == CURRENT_DISTRIBUTION_VERSION
+    assert _project_version() == CURRENT_DISTRIBUTION_VERSION
+    assert PACKAGE_VERSION == V3_COMPATIBILITY_VERSION
+    assert manifest["package_version"] == V3_COMPATIBILITY_VERSION
     assert CONTRACT_VERSION == manifest["contract_version"] == 3
     assert COMPONENT_ID == manifest["component_id"] == "guardian_wallet"
 
