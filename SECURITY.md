@@ -1,165 +1,115 @@
-# Security Policy — DGB Wallet Guardian
+# Security Policy - DGB Wallet Guardian
 
-## Supported Versions
+Repository: `DGB-Wallet-Guardian`
+Component: Wallet Guardian
+Maintainer: DarekDGB
+License: MIT
 
-Only **Guardian Wallet v3** is supported and security-maintained.
+## Supported surfaces
 
-| Version | Supported |
+| Surface | Status |
 |---|---|
-| v3.2.0 | ✅ Yes — current integration-boundary hardening release |
-| v3.1.0 | ✅ Yes — previous hardened release |
-| v3.0.0 | ✅ Yes — stable v3 baseline |
-| v2 | ❌ No — archived |
+| Distribution `4.0.0` / candidate `v4.0.0` | Controlled pre-release; security-maintained; not released or tagged |
+| Shield v3.2.0 compatibility surface | Historical release; compatibility-maintained |
+| Archived v2 behavior | Unsupported unless an issue affects a maintained surface |
 
-All legacy documentation is retained **for reference only** and is **non-authoritative**.
+The distribution-version alignment does not change frozen v3 or v4 protocol
+and schema identities. Historical material is non-authoritative for new v4
+security claims.
 
----
+## Security model
 
-## Security Model
+Wallet Guardian is a deterministic, fail-closed user-protection evidence
+component. It evaluates bounded wallet intent and verified authentication
+context and emits role-bound evidence for the Shield Orchestrator.
 
-DGB Wallet Guardian is built under **fail-closed, deterministic, glass-box** principles.
+Wallet Guardian does not sign or broadcast DigiByte transactions, hold wallet
+keys, change consensus, approve spending or execution, produce the final
+Shield receipt, bypass the Shield Orchestrator, or override AdamantineOS.
 
-Core guarantees:
+AdamantineOS remains the final fail-closed policy and execution boundary.
+Shield `ALLOW` is evidence that may continue to independent downstream checks,
+not execution authority.
 
-- Deterministic inputs produce deterministic outputs.
-- Explicit, stable reason codes are required.
-- No silent allow paths are permitted.
-- No mutable decision state is trusted.
-- No hidden authority is allowed.
-- Component verdicts are evidence only.
-- CI must enforce the 100% coverage gate.
+## Frozen v4 identities
 
-If Guardian cannot **prove safety**, it must **block execution**.
+```text
+component_id: guardian_wallet
+component_role: shield_component_guardian_wallet
+contract_version: 4
+schema_version: shield.verdict.v2
+canonicalization_profile: shield-v4-canon.v1
+signature_policy: policy.v1
+signature_bundle_schema: shield.signature_bundle.v1
+key_registry_schema: shield.key_registry.v1
+```
 
-Guardian Wallet is a **security boundary**, not a feature layer.
+Distribution version `4.0.0` is not a protocol identifier.
 
----
+## Required and optional algorithms
 
-## v3.2.0 Security Boundary
+`policy.v1` requires `classical-ed25519` then `ml-dsa`. Optional `fn-dsa` may
+appear only last under `fips206-draft-falcon1024-v1`. It may be absent. If
+present, it must verify and cannot replace or rescue a missing or failed
+required path. The Falcon-1024 profile is draft evidence, not final FIPS 206
+proof.
 
-The v3.2.0 boundary locks Guardian into the Shield manifest / verdict / receipt upgrade path.
+A verifier rejects reordered, duplicated, unknown, wrong-profile, wrong-role,
+revoked, expired, mismatched, or downgraded evidence before authority can be
+inferred.
 
-Guardian may:
+## Role and key separation
 
-- evaluate wallet intent and verified authentication context
-- produce deterministic component verdict data
-- emit stable reason IDs and evidence-family data
-- provide evidence to the Shield Orchestrator
+Wallet Guardian evidence uses only role `shield_component_guardian_wallet`.
+Trust entries bind role, algorithm, key ID, key version, validity window,
+status, and public key. The fixed algorithm-to-profile mapping is
+verifier-controlled, and the selected profile is authenticated in the
+real-signature input. Component evidence cannot be reused as an Orchestrator
+receipt or transaction-signing authority.
 
-Guardian must never:
+The repository's deterministic signature material is TEST-ONLY. Selected real
+backends may sign component evidence only; that does not grant transaction
+signing or wallet-key custody.
 
-- sign transactions
-- broadcast transactions
-- hold, derive, or access private keys
-- approve AdamantineOS execution directly
-- override the Shield Orchestrator
-- act as final authority for execution
-- create hidden authority through fallback behavior
+## Real-backend evidence
 
-AdamantineOS must consume Shield decisions only through the deterministic **Shield Orchestrator receipt**.
+The backend-neutral adapter and optional liboqs adapters preserve fail-closed
+behavior. There is no silent fallback from a selected real backend to
+TEST-ONLY signatures.
 
-Raw Guardian outputs are **not** final execution authority.
+Standard CI proves interface behavior, KATs, negative paths, and 100 percent
+statement coverage. The dedicated real-OQS workflow proves the exact native
+ML-DSA-65 and Falcon-1024 test nodes with a no-skip JUnit guard. Neither proof
+establishes production key custody, HSM assurance, provider hardening,
+transaction signing, or final FIPS 206 conformance.
 
----
+## Required negative behavior
 
-## Fail-Closed Requirements
+The v4 surface rejects missing or invalid required signatures, noncanonical
+order, duplicates, optional-evidence rescue, role or key mismatch, revoked or
+out-of-window keys, unsupported profiles, context or payload mutation,
+malformed canonical or binary material, native exceptions, non-boolean verify
+results, TEST-ONLY material at a real boundary, and forbidden transaction,
+broadcast, consensus, custody, bypass, or final-authority metadata.
 
-The following conditions must reject deterministically:
+## Reporting a vulnerability
 
-- missing required verdict data
-- malformed verdict data
-- unknown fields in strict contract paths
-- duplicated authority claims
-- unknown reason IDs
-- unknown evidence families
-- mismatched component identity
-- mismatched context hash
-- unsafe or unserialisable input
-- any ambiguity that affects authority, determinism, or auditability
+Do not disclose a suspected security issue publicly first. Use a private GitHub
+security advisory when available, or contact `@DarekDGB`. Include the affected
+commit or tag, reproduction steps, expected and actual behavior, security
+impact, and affected surface.
 
-A Shield `ALLOW` result only permits AdamantineOS to continue its own checks.
+## Release governance
 
-It is **not** final signing or execution approval.
+Distribution `4.0.0` is a controlled candidate. Do not create or move
+`v4.0.0` before every V4.10 gate is complete and DarekDGB explicitly
+authorizes the release. Green CI and aligned metadata do not themselves grant
+release authority.
 
----
+## Final security rule
 
-## Release Requirements
+Reject any change that weakens determinism, fail-closed behavior, canonical
+bundle order, required signature policy, Wallet Guardian role separation,
+no-key-custody behavior, or the evidence-only authority boundary.
 
-No Guardian Wallet v3.2.0 release should be tagged unless all of the following are true:
-
-- roadmap checklist is complete
-- tests pass locally or in CI
-- CI coverage gate remains at 100%
-- manifest files are present and aligned
-- reason IDs are documented and tested
-- evidence families are documented and tested
-- verdict boundary tests pass
-- Orchestrator receipt boundary is respected
-- final fresh ZIP audit is complete
-- Red Team report is complete
-- no docs-vs-tests mismatch remains
-
-Tests define truth.
-
-Documentation must never claim behavior that tests do not enforce.
-
----
-
-## Reporting a Vulnerability
-
-If you believe you have found a security issue:
-
-1. **Do not open a public issue.**
-2. Use the project’s private security contact when available.
-3. Include:
-   - clear description of the issue
-   - steps to reproduce, if applicable
-   - expected behavior
-   - actual behavior
-   - affected commit hash or tag
-   - security impact
-
-The project should acknowledge valid reports within **72 hours** when an active security contact is available.
-
----
-
-## Responsible Disclosure
-
-Responsible disclosure is strongly encouraged.
-
-Coordinated fixes should be prepared and released before public disclosure whenever possible.
-
----
-
-## In Scope
-
-Security issues in scope include:
-
-- Guardian Wallet v3 contract behavior
-- determinism violations
-- fail-closed bypasses
-- reason ID ambiguity
-- evidence-family ambiguity
-- manifest/verdict mismatch
-- context hash mismatch
-- Orchestrator boundary bypass
-- AdamantineOS raw-output bypass risk
-- CI or test coverage gaps affecting security
-
----
-
-## Out of Scope
-
-The following are out of scope unless they create a direct security defect:
-
-- UI/UX preferences
-- performance tuning
-- cosmetic documentation changes
-- non-security refactors
-- unsupported archived v2 behavior
-
----
-
-## Final Security Rule
-
-Any change that weakens determinism, fail-closed behavior, explicit authority boundaries, or the Orchestrator-first receipt model must be rejected.
+Copyright 2025 DarekDGB
